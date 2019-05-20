@@ -13,11 +13,13 @@
  * @version 0.5 2019-05-15
  *  Added controller events.
  *  Separated renderer classes.
-* @version 0.6 2019-05-17
+ * @version 0.6 2019-05-17
  *  Added menu index to renderer.
  *  Added user custom tag and data pointer definition.
+ * @version 0.7 2019-05-20
+ *  Fixed active menu item changing to change before event is yield.
  */
- 
+
 #ifndef QMENU_H
 #define QMENU_H
 
@@ -29,7 +31,7 @@
 
 /**
  * @brief Menu item definition.
- */ 
+ */
 class QMenuItem {
     private:
         int _id;
@@ -37,12 +39,12 @@ class QMenuItem {
         #ifdef QMENU_USE_EXTENDED_INFO
         int _tag;
         void* _data;
-        #endif        
+        #endif
         QMenuItem* _back = NULL;
         QMenuItem* _menu = NULL;
         QMenuItem* _prev = NULL;
         QMenuItem* _next = NULL;
-        
+
     public:
 
         /**
@@ -54,7 +56,7 @@ class QMenuItem {
         static QMenuItem* create(int id, char* caption) {
             return new QMenuItem(id, caption);
         }
-        
+
         /**
          * @brief Static QMenuItem instantiating and initialization.
          * @param id Menu item identification. This could be unique integer value, but no unique
@@ -65,7 +67,7 @@ class QMenuItem {
         static QMenuItem* create(int id, char* caption, int tag) {
             return new QMenuItem(id, caption);
         }
-        
+
         /**
          * @brief Static QMenuItem instantiating and initialization.
          * @param id Menu item identification. This could be unique integer value, but no unique
@@ -76,7 +78,7 @@ class QMenuItem {
         static QMenuItem* create(int id, char* caption, void* data) {
             return new QMenuItem(id, caption);
         }
-        
+
         /**
          * @brief Static QMenuItem instantiating and initialization.
          * @param id Menu item identification. This could be unique integer value, but no unique
@@ -87,7 +89,7 @@ class QMenuItem {
          */
         static QMenuItem* create(int id, char* caption, int tag, void* data) {
             return new QMenuItem(id, caption);
-        }                        
+        }
 
         /**
          * @brief Creates new QMenuItem instance.
@@ -98,7 +100,7 @@ class QMenuItem {
             _id = id;
             _caption = caption;
         }
-        
+
         #ifdef QMENU_USE_EXTENDED_INFO
         /**
          * @brief Creates new QMenuItem instance.
@@ -122,8 +124,8 @@ class QMenuItem {
             _id = id;
             _caption = caption;
             _data = data;
-        } 
-        
+        }
+
         /**
          * @brief Creates new QMenuItem instance.
          * @param id Menu item identification.
@@ -136,9 +138,9 @@ class QMenuItem {
             _caption = caption;
             _tag = tag;
             _data = data;
-        }               
+        }
         #endif
-               
+
         /**
          * @brief Gets menu item identification.
          * @return Returns menu item identification.
@@ -146,16 +148,16 @@ class QMenuItem {
         int getId() {
             return this->_id;
         }
-    
+
         /**
          * @brief Gets menu item caption.
          * @return Returns menu item caption.
          */
         char* getCaption() {
             return this->_caption;
-        } 
-        
-        #ifdef QMENU_USE_EXTENDED_INFO        
+        }
+
+        #ifdef QMENU_USE_EXTENDED_INFO
         /**
          * @brief Gets user custom integer value.
          * @return Returns tag value.
@@ -163,14 +165,14 @@ class QMenuItem {
         int getTag() {
             return _tag;
         }
-            
+
         /**
          * @brief Sets user custom integer value.
-         */ 
+         */
         void setTag(int tag) {
             _tag = tag;
         }
-           
+
         /**
          * @brief Gets user defined data pointer.
          * @return Returns void pointer to custom data.
@@ -178,15 +180,15 @@ class QMenuItem {
         void* getData() {
             return _data;
         }
-        
+
         /**
          * @brief Sets user defined data pointer.
          */
-        void setData(void* data) {    
+        void setData(void* data) {
             _data = data;
         }
         #endif
-        
+
         /**
          * @brief Gets parent menu item.
          * @return Returns parent menu item reference or NULL if this item is top menu item.
@@ -203,7 +205,7 @@ class QMenuItem {
         QMenuItem* getMenu() {
             return this->_menu;
         }
-        
+
         /**
          * @brief Sets first submenu item.
          * @param menu Reference to menu item that has to be first submenu item. Value of NULL
@@ -214,7 +216,7 @@ class QMenuItem {
             menu->_back = this;
             return menu;
         }
-        
+
         /**
          * @brief Get previous menu item in current menu level.
          * @return Returns previous item in current menu level or NULL if this item is first.
@@ -222,14 +224,14 @@ class QMenuItem {
         QMenuItem* getPrev() {
             return this->_prev;
         }
-        
+
         /**
          * @brief Get next menu item in current menu level.
          * @return Returns next item in current menu level or NULL if this item is last.
          */
         QMenuItem* getNext() {
             return this->_next;
-        }        
+        }
 
         /**
          * @brief Sets next item in durrent menu level.
@@ -281,7 +283,7 @@ class QMenu {
          * @brief Calls onActiveItemChanged event if assigned.
          * @param oldItem Previusly active menu item.
          * @oaram newItem Currently active menu item.
-         */ 
+         */
         void doOnActiveItemChanged(QMenuItem* oldItem, QMenuItem* newItem) {
             if (_onActiveItemChanged != NULL) {
                 QMenuActiveItemChangedEvent event = {
@@ -304,7 +306,7 @@ class QMenu {
                 _onItemUtilized(event);
             }
         }
-        
+
     public:
         /**
          * @brief Creates new instance and initializes it with default root menu item. Root item is
@@ -313,8 +315,8 @@ class QMenu {
         QMenu() {
             _root = new QMenuItem(0, "__ROOT__");
             _active = _root;
-        }    
-        
+        }
+
         /**
          * @brief Creates new instance and initializes it with root menu item.
          * @param id Root menu item identification. This could be unique integer value, but no
@@ -325,7 +327,7 @@ class QMenu {
             _root = new QMenuItem(id, caption);
             _active = _root;
         }
-        
+
         /**
          * @brief Gets root menu item.
          * @return Returns menu root item reference. This is never NULL.
@@ -333,7 +335,7 @@ class QMenu {
         QMenuItem* getRoot() {
             return _root;
         }
-        
+
         /**
          * @brief Gets currently active menu item.
          * @return Returns active menu item reference.
@@ -345,7 +347,7 @@ class QMenu {
         /**
          * @brief Gets onActiveItemChanged callback.
          * @return Returns onActiveItemChanged callback or NULL if not assigned.
-         */ 
+         */
         QMenuActiveItemChangedCallback getOnActiveItemChanged(){
             return _onActiveItemChanged;
         }
@@ -373,7 +375,7 @@ class QMenu {
         void setOnItemUtilized(QMenuItemUtilizedCallback onItemUtilized) {
             _onItemUtilized = onItemUtilized;
         }
-        
+
         /**
          * @brief Moves to next menu item. Sets currently active item's next item as active menu
          *      item.
@@ -381,17 +383,18 @@ class QMenu {
          */
         QMenuItem* next() {
             if (this->_active != NULL) {
-                QMenuItem* item = this->_active->getNext();
-                if (item != NULL) {
-                    doOnActiveItemChanged(this->_active, item);
-                    this->_active = item;    
+                QMenuItem* oldActive = this->_active;
+                QMenuItem* newActive = this->_active->getNext();
+                if (newActive != NULL) {
+                    this->_active = newActive;
+                    doOnActiveItemChanged(oldActive, newActive);
                 }
-                return item;
+                return newActive;
             }
-            
+
             return NULL;
         }
-        
+
         /**
          * @brief Moves to previous menu item. Sets currently active item's previous item as active
          *      menu item.
@@ -399,17 +402,18 @@ class QMenu {
          */
         QMenuItem* prev() {
             if (this->_active != NULL) {
-                QMenuItem* item = this->_active->getPrev();      
-                if (item != NULL) {
-                    doOnActiveItemChanged(this->_active, item);
-                    this->_active = item;
-                }   
-                return item;
+                QMenuItem* oldActive = this->_active;
+                QMenuItem* newActive = this->_active->getPrev();      
+                if (newActive != NULL) {
+                    this->_active = newActive;
+                    doOnActiveItemChanged(oldActive, newActive);
+                }
+                return newActive;
             }
-            
+
             return NULL;
         }
-        
+
         /**
          * @brief Moves to submenu. Sets currently active item's first child item as active menu
          *      item.
@@ -417,19 +421,20 @@ class QMenu {
          */
         QMenuItem* enter() {
             if (this->_active != NULL) {
-                QMenuItem* item = this->_active->getMenu();
-                if (item != NULL) {
-                    doOnActiveItemChanged(this->_active, item);
-                    this->_active = item;
+                QMenuItem* oldActive = this->_active;
+                QMenuItem* newActive = this->_active->getMenu();
+                if (newActive != NULL) {
+                    this->_active = newActive;
+                    doOnActiveItemChanged(oldActive, newActive);
                 } else {
                     doOnItemUtilized(this->_active);
                 }
-                return item;
+                return newActive;
             }
-            
+
             return NULL;
         }
-        
+
         /**
          * @brief Moves to parent menu. Sets currently active item's parent item as active menu
          *      item.
@@ -437,14 +442,15 @@ class QMenu {
          */
         QMenuItem* back() {
             if (this->_active != NULL) {
-                QMenuItem* item = this->_active->getBack();
-                if (item != NULL) {
-                    doOnActiveItemChanged(this->_active, item);
-                    this->_active = item;
+                QMenuItem* oldActive = this->_active;
+                QMenuItem* newActive = this->_active->getBack();
+                if (newActive != NULL) {
+                    this->_active = newActive;
+                    doOnActiveItemChanged(oldActive, newActive);
                 }
-                return item;
+                return newActive;
             }
-            
+
             return NULL;
         }
 };
@@ -458,21 +464,18 @@ struct QMenuRenderItemEvent {
 };
 
 /** QMenuRenderer onItemRender event */
-// TODO Rename to onItemMenuRender
-// TODO Rename to QMenuRenderMenuItemEvent
-// TODO Rename to QMenuOnRenderMenuItemCallback
 typedef void (*QMenuOnRenderItemCallback) (QMenuRenderItemEvent);
 
 /**
  * @brief Rendering machine for menu backend controller.
  */
 class QMenuRenderer {
-    private: 
+    private:
         QMenuOnRenderItemCallback _onRenderItem;
-        
+
     protected:
         QMenu* menu;
-        
+
         /**
          * @brief Calls assigned render callback.
          * @param item Menu item to be rendered.
@@ -486,25 +489,25 @@ class QMenuRenderer {
                 this->_onRenderItem(event);
             }
         }
-        
+
     public:
         /**
          * @brief Creates new QMenuRenderer instance.
          * @param menu Menu to redner.
-         */ 
+         */
         QMenuRenderer(QMenu* menu) {
             this->menu = menu;
         }
-        
+
         /**
          * @brief Gets render item callback called when menu item has to be rendered.
-         * @return Returns onRenderItemCallbackEventCallback function reference or 
+         * @return Returns onRenderItemCallbackEventCallback function reference or
          * NULL if not assigned.
          */
         QMenuOnRenderItemCallback getOnRenderItem() {
             return this->_onRenderItem;
         }
-        
+
         /**
          * @brief Sets render item callback called when menu item has to be rendered.
          * @param The onRenderItemCallbackEventCallback function.
@@ -520,41 +523,41 @@ class QMenuRenderer {
 class QMenuListRenderer : public QMenuRenderer {
     private:
         int _viewportIndex = 0;
-        int _viewportSize;        
-        
-    protected:            
+        int _viewportSize;
+
+    protected:
         /**
          * @brief Calculates index of menu item in viewport.
          * @param top First item of current submenu.
          * @param active Currently active menu item.
-         */ 
+         */
         void calcViewportIndex(QMenuItem* top, QMenuItem* active) {
             int index = 0;
             QMenuItem* item = top;
             while (item != NULL) {
-            
+
                 // Check active item in viewport
                 if (item == active) {
-                    
+
                     // Active item before view port
                     if (index < this->_viewportIndex) {
                         this->_viewportIndex = index;
                         break;
                     }
-                    
+
                     // Active item after viewport
                     if (index >= this->_viewportIndex + this->_viewportSize) {
                         this->_viewportIndex = index - this->_viewportSize + 1;
-                        break;                                   
-                    }                    
+                        break;
+                    }
                 }
-                
+
                 // Next item
                 item = item->getNext();
                 index++;
             }
         }
-        
+
         /**
          * @brief Calls rendering for all items in viewport.
          * @param top Top item of rendered menu level.
@@ -564,17 +567,17 @@ class QMenuListRenderer : public QMenuRenderer {
             int index = 0;
             QMenuItem* item = top;
             while (item != NULL) {
-            
-                // Render item if in viewport    
+
+                // Render item if in viewport
                 if (index >= this->_viewportIndex) {
                     renderItem(item, item == active, index, index - this->_viewportIndex);
                 }
-                
+
                 // All renderred, break
                 if (index >= this->_viewportIndex + this->_viewportSize - 1) {
                     break;
                 }
-                
+
                 // Next item
                 item = item->getNext();
                 index++;
@@ -586,54 +589,54 @@ class QMenuListRenderer : public QMenuRenderer {
          * @brief Creates new QMenuRenderer instance.
          * @param menu Menu to redner.
          * @param viewportSize Number of menu items mutually visible.
-         */ 
-        QMenuListRenderer(QMenu* menu, int viewportSize) 
-            : QMenuRenderer(menu) 
-        {            
+         */
+        QMenuListRenderer(QMenu* menu, int viewportSize)
+            : QMenuRenderer(menu)
+        {
             this->_viewportSize = viewportSize;
         }
-        
+
         /**
          * @brief Renders associated menu. Calculates items that has to be rendered to current
          * viewport and calls callback to provide user defined item
          * draw.
-         */ 
-        void render() {            
+         */
+        void render() {
             // Check menu set
             if (this->menu == NULL) {
                 return;
             }
-                        
-            // Check active set            
+
+            // Check active set
             QMenuItem* active = this->menu->getActive();
             if (active == NULL) {
                 return;
             }
-            
+
             // Get first item in current menu
-            QMenuItem* top = getTopItem(active);            
-            
+            QMenuItem* top = getTopItem(active);
+
             // Calc viewport position
             calcViewportIndex(top, active);
 
-            // Render viewport            
+            // Render viewport
             renderItemsInViewport(top, active);
         }
-        
+
         /**
          * @brief Gets top most item from current.
          * @param item Custom menu item.
          * @return Returns top most item in menu or submenu or NULL if given
          *      item is NULL.
-         */ 
+         */
         QMenuItem* getTopItem(QMenuItem* item) {
             if (item == NULL) {
                 return NULL;
             }
-            
+
             QMenuItem* top = item;
             while (top->getPrev() != NULL) {
-                top = top->getPrev();                         
+                top = top->getPrev();
             }
             return top;
         }

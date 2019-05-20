@@ -15,7 +15,7 @@
  *      Base implementation
  * @version 0.2 2019-05-13
  *      Added rotary encoder support.
- *      Added menu login.   
+ *      Added menu structure.   
  */
 
 #include <Arduino.h>
@@ -30,6 +30,8 @@
 #define ENCODER_SW 3
 
 // Menu constants
+#define MENU_SIZE 3
+
 #define MENU_SETUP 1
 #define MENU_MIN_FREQ 11
 #define MENU_MAX_FREQ 12
@@ -48,7 +50,7 @@ RotaryEncoder encoder(ENCODER_CLK, ENCODER_DT, ENCODER_SW);
 
 /** Menu controller and renederer */
 QMenu menu(MENU_SETUP, "Setup");
-QMenuListRenderer menuRenderer(&menu, 3);
+QMenuListRenderer menuRenderer(&menu, MENU_SIZE);
 
 /** Application status holder */
 enum Status { running, navigation } status = running;
@@ -68,8 +70,8 @@ struct Settings {
 
 /* Initialization */
 void setup() {
-    #ifdef SERIAL_LOG
     Serial.begin(9600);
+    #ifdef SERIAL_LOG
     Serial.println("Pulse generator");
     #endif
 
@@ -100,7 +102,8 @@ void setup() {
     menu.setOnItemUtilized(onItemUtilized);
 
     // Setup menu rederer
-    menuRenderer.setOnRenderItem(onRenderMenuItem);    
+    menuRenderer.setOnRenderItem(onRenderMenuItem);
+    menuRenderer.render();    
 
     // Load settings
     // TODO load
@@ -181,6 +184,8 @@ void activeItemChanged(QMenuActiveItemChangedEvent event) {
     }
     Serial.println();
     #endif
+
+    menuRenderer.render();
 }
 
 /* Menu item used */
@@ -192,11 +197,12 @@ void onItemUtilized(QMenuItemUtilizedEvent event) {
     }
     Serial.println();
     #endif
+
+    menuRenderer.render();
 }
 
 /* Render menu item */
 void onRenderMenuItem(QMenuRenderItemEvent event) {
-    #ifdef SERIAL_LOG
     if (event.isActive) {
         Serial.print("|[ ");
     } else {
@@ -210,13 +216,10 @@ void onRenderMenuItem(QMenuRenderItemEvent event) {
         Serial.print("  |");
     }
     Serial.println();
-    #endif
 }
 
-#ifdef SERIAL_LOG
 void padChar(char c, int count) {
     for (int index = 0; index < count; index++) {
         Serial.print(c);
     } 
 }
-#endif
