@@ -19,18 +19,24 @@
  */
 
 #include <Arduino.h>
+#include "U8glib.h"
 #include "lib/RotaryEncoder.h"
 #include "lib/QMenu.h"
 
-// Define to turn on serial link logging
-#define SERIAL_LOG
+/* Define to turn on serial link logging */
+//#define SERIAL_LOG
 
+/* Rotary encoder controller */
 #define ENCODER_CLK 5
 #define ENCODER_DT 4
 #define ENCODER_SW 3
+RotaryEncoder encoder(ENCODER_CLK, ENCODER_DT, ENCODER_SW);
 
-// Menu constants
-#define MENU_SIZE 3
+/* OLED Display 128x64 */
+U8GLIB_SSD1306_128X64 oled(U8G_I2C_OPT_NONE);
+
+/* Menu constants */
+#define MENU_SIZE 5
 
 #define MENU_SETUP 1
 #define MENU_MIN_FREQ 11
@@ -45,20 +51,17 @@
 #define MENU_FREQ_UNITS_HZ 162
 #define MENU_EXIT 17
 
-/** Rotary encoder controller */
-RotaryEncoder encoder(ENCODER_CLK, ENCODER_DT, ENCODER_SW);
-
-/** Menu controller and renederer */
+/* Menu controller and renederer */
 QMenu menu(MENU_SETUP, "Setup");
 QMenuListRenderer menuRenderer(&menu, MENU_SIZE);
 
-/** Application status holder */
+/* Application status holder */
 enum Status { running, navigation } status = running;
 
-/** Current working frequency */
+/* Current working frequency */
 word frequency;
 
-/** Settings */
+/* Application settings */
 struct Settings {
     word minFreq;
     word maxFreg;
@@ -102,14 +105,16 @@ void setup() {
     menu.setOnItemUtilized(onItemUtilized);
 
     // Setup menu rederer
-    menuRenderer.setOnRenderItem(onRenderMenuItem);
-    menuRenderer.render();    
-
+    menuRenderer.setOnRenderItem(onRenderMenuItem);    
+    
     // Load settings
     // TODO load
 
     //Set initial frequency
     frequency = settings.minFreq;    
+
+    // Render menu 
+    renderMenu();
 }
 
 /* Main Loop */
@@ -185,7 +190,7 @@ void activeItemChanged(QMenuActiveItemChangedEvent event) {
     Serial.println();
     #endif
 
-    menuRenderer.render();
+    renderMenu();
 }
 
 /* Menu item used */
@@ -198,11 +203,27 @@ void onItemUtilized(QMenuItemUtilizedEvent event) {
     Serial.println();
     #endif
 
-    menuRenderer.render();
+    renderMenu();
 }
 
 /* Render menu item */
 void onRenderMenuItem(QMenuRenderItemEvent event) {
+    oled.setFont(u8g_font_6x13);
+    oled.setFontRefHeightText();
+    oled.setFontPosTop();
+
+    u8g_uint_t padding = 1;
+    u8g_uint_t width = oled.getWidth();
+    u8g_uint_t height = oled.getFontAscent() - oled.getFontDescent() + padding;
+    
+    oled.setDefaultForegroundColor();
+    if (event.isActive) {
+        oled.drawBox(0, height * event.renderIndex, width, height + padding);
+        oled.setDefaultBackgroundColor();
+    }
+    oled.drawStr(padding, height * event.renderIndex + padding, event.item->getCaption());
+
+    #ifdef SERIAL_LOG
     if (event.isActive) {
         Serial.print("|[ ");
     } else {
@@ -216,10 +237,19 @@ void onRenderMenuItem(QMenuRenderItemEvent event) {
         Serial.print("  |");
     }
     Serial.println();
+    #endif
 }
 
 void padChar(char c, int count) {
     for (int index = 0; index < count; index++) {
         Serial.print(c);
     } 
+}
+
+void renderMenu() {
+    oled.firstPage();
+    oled.setFont(u8g_font_unifont);
+    do {
+        menuRenderer.render();
+    } while (oled.nextPage());
 }
