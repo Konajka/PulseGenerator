@@ -16,6 +16,8 @@
  * @version 0.2 2019-05-13
  *      Added rotary encoder support.
  *      Added menu structure.   
+ * @version 0.3 2019-06-13     
+ *      Fixed menu rendering.
  */
 
 #include <Arduino.h>
@@ -23,7 +25,7 @@
 #include "lib/RotaryEncoder.h"
 #include "lib/QMenu.h"
 
-/* Define to turn on serial link logging */
+/* Enable serial link */
 //#define SERIAL_LOG
 
 /* Rotary encoder controller */
@@ -73,23 +75,16 @@ struct Settings {
 
 /* Initialization */
 void setup() {
-    Serial.begin(9600);
     #ifdef SERIAL_LOG
-    Serial.println("Pulse generator");
+    Serial.begin(9600);
     #endif
-
-    // Setup encoder
-    encoder.begin();
-    encoder.setOnChange(encoderOnChange);
-    encoder.setOnClick(encoderOnClick);
-    encoder.setOnLongClick(encoderOnLongClick);
 
     // Create menu structure
     menu.getRoot()
         ->setMenu(QMenuItem::create(MENU_MIN_FREQ, "Minimal frequency"))
         ->setNext(QMenuItem::create(MENU_MAX_FREQ, "Maximal frequency"))
         ->setNext(QMenuItem::create(MENU_PULSE_RATIO, "Pulse ratio"))
-        ->setNext(QMenuItem::create(MENU_CURVE_SHAPE_SUBMENU, "Acceleration curve shape"))
+        ->setNext(QMenuItem::create(MENU_CURVE_SHAPE_SUBMENU, "Acceleration curve"))
             ->setMenu(QMenuItem::create(MENU_CURVE_SHAPE_LINEAR, "Linear acceleration"))
             ->setNext(QMenuItem::create(MENU_CURVE_SHAPE_QUADRATIC, "Quadratic acceleration"))
             ->getBack()        
@@ -105,10 +100,16 @@ void setup() {
     menu.setOnItemUtilized(onItemUtilized);
 
     // Setup menu rederer
-    menuRenderer.setOnRenderItem(onRenderMenuItem);    
+    menuRenderer.setOnRenderItem(onRenderMenuItem);  
+
+    // Setup encoder
+    encoder.setOnChange(encoderOnChange);
+    encoder.setOnClick(encoderOnClick);
+    encoder.setOnLongClick(encoderOnLongClick);
+    encoder.begin();
     
     // Load settings
-    // TODO load
+    loadSettings();
 
     //Set initial frequency
     frequency = settings.minFreq;    
@@ -133,76 +134,28 @@ void renderScreen() {
 void encoderOnChange(RotaryEncoderOnChangeEvent event) {  
     if (event.direction == left) {
         QMenuItem* item = menu.prev();
-        #ifdef SERIAL_LOG
-        Serial.print("Menu move left: ");
-        if (item != NULL) {
-            Serial.print(item->getCaption());
-        }
-        Serial.println();
-        #endif
     } else if (event.direction == right) {
         QMenuItem* item = menu.next();
-        #ifdef SERIAL_LOG
-        Serial.print("Menu move right: ");
-        if (item != NULL) {
-            Serial.print(item->getCaption());
-        }
-        Serial.println();
-        #endif
     }
 }
 
 /* Encoder click event */
 void encoderOnClick() {
     QMenuItem* item = menu.enter();
-    #ifdef SERIAL_LOG
-    Serial.print("Menu enter: ");
-    if (item != NULL) {
-        Serial.print(item->getCaption());
-    }
-    Serial.println();
-    #endif
 }
 
 /* Encoder long click event */
 void encoderOnLongClick() {
     QMenuItem* item = menu.back();
-    #ifdef SERIAL_LOG
-    Serial.print("Menu get back: ");
-    if (item != NULL) {
-        Serial.print(item->getCaption());
-    }
-    Serial.println();
-    #endif
 }
 
 /* Menu item changed */
 void activeItemChanged(QMenuActiveItemChangedEvent event) {
-    #ifdef SERIAL_LOG
-    Serial.print("Menu changed ");
-    if (event.oldActiveItem != NULL) {
-        Serial.print(event.oldActiveItem->getCaption());
-    }
-    Serial.print(" -> ");
-    if (event.newActiveItem != NULL) {
-        Serial.print(event.newActiveItem->getCaption());
-    }
-    Serial.println();
-    #endif
-
     renderMenu();
 }
 
 /* Menu item used */
 void onItemUtilized(QMenuItemUtilizedEvent event) {
-    #ifdef SERIAL_LOG
-    Serial.print("Menu utilized ");
-    if (event.utilizedItem != NULL) {
-        Serial.print(event.utilizedItem->getCaption());
-    }
-    Serial.println();
-    #endif
-
     renderMenu();
 }
 
@@ -222,34 +175,23 @@ void onRenderMenuItem(QMenuRenderItemEvent event) {
         oled.setDefaultBackgroundColor();
     }
     oled.drawStr(padding, height * event.renderIndex + padding, event.item->getCaption());
-
-    #ifdef SERIAL_LOG
-    if (event.isActive) {
-        Serial.print("|[ ");
-    } else {
-        Serial.print("|  ");
-    }
-    Serial.print(event.item->getCaption());
-    padChar(' ', 20 - strlen(event.item->getCaption()));
-    if (event.isActive) {
-        Serial.print(" ]|");
-    } else {
-        Serial.print("  |");
-    }
-    Serial.println();
-    #endif
 }
 
-void padChar(char c, int count) {
-    for (int index = 0; index < count; index++) {
-        Serial.print(c);
-    } 
-}
-
+/* Renders menu menu in current state on oled */
 void renderMenu() {
     oled.firstPage();
     oled.setFont(u8g_font_unifont);
     do {
         menuRenderer.render();
     } while (oled.nextPage());
+}
+
+/* Loads settings from EEPROM */
+void loadSettings() {
+    // TODO
+}
+
+/* Stores settings into EEPROM */
+void saveSettings() {
+    // TODO
 }
