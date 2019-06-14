@@ -54,10 +54,17 @@ struct Settings {
     word minFreq;
     word maxFreg;
     byte freqRatio;
-    byte curveShape;
-    bool freqFloating;
+    byte accelerationCurve;
+    byte freqFloating;
     byte freqUnits;
-} settings;
+} settings = {
+    10, // 10Hz ~ 600rpm
+    200, // 200Hz ~ 12000 rpm
+    5, // 5% pulse width 
+    ACCELERATION_SHAPE_LINEAR, // default acceleration type
+    0, // default frequency floating 0%
+    FREQ_UNITS_RPM 
+};
 
 /* Initialization */
 void setup() {

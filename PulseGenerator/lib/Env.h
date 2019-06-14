@@ -15,6 +15,12 @@
 #define MENU_FREQ_UNITS_HZ 162
 #define MENU_EXIT 17
 
+#define ACCELERATION_SHAPE_LINEAR 0
+#define ACCELERATION_SHAPE_QUADRATIC 1
+
+#define FREQ_UNITS_RPM 0
+#define FREQ_UNITS_HZ 1
+
 /* Create menu structure */
 void populateMenu(QMenu& menu) {
     menu.getRoot()
