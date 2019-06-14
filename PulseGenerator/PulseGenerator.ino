@@ -24,6 +24,7 @@
 #include "U8glib.h"
 #include "lib/RotaryEncoder.h"
 #include "lib/QMenu.h"
+#include "lib/Env.h"
 
 /* Enable serial link */
 //#define SERIAL_LOG
@@ -37,23 +38,8 @@ RotaryEncoder encoder(ENCODER_CLK, ENCODER_DT, ENCODER_SW);
 /* OLED Display 128x64 */
 U8GLIB_SSD1306_128X64 oled(U8G_I2C_OPT_NONE);
 
-/* Menu constants */
-#define MENU_SIZE 5
-
-#define MENU_SETUP 1
-#define MENU_MIN_FREQ 11
-#define MENU_MAX_FREQ 12
-#define MENU_PULSE_RATIO 13
-#define MENU_CURVE_SHAPE_SUBMENU 14
-#define MENU_CURVE_SHAPE_LINEAR 141
-#define MENU_CURVE_SHAPE_QUADRATIC 142
-#define MENU_FREQ_FLOATING 15
-#define MENU_FREQ_UNITS_SUBMENU 16
-#define MENU_FREQ_UNITS_RPM 161
-#define MENU_FREQ_UNITS_HZ 162
-#define MENU_EXIT 17
-
 /* Menu controller and renederer */
+#define MENU_SIZE 5
 QMenu menu(MENU_SETUP, "Setup");
 QMenuListRenderer menuRenderer(&menu, MENU_SIZE);
 
@@ -79,25 +65,10 @@ void setup() {
     Serial.begin(9600);
     #endif
 
-    // Create menu structure
-    menu.getRoot()
-        ->setMenu(QMenuItem::create(MENU_MIN_FREQ, "Minimal frequency"))
-        ->setNext(QMenuItem::create(MENU_MAX_FREQ, "Maximal frequency"))
-        ->setNext(QMenuItem::create(MENU_PULSE_RATIO, "Pulse ratio"))
-        ->setNext(QMenuItem::create(MENU_CURVE_SHAPE_SUBMENU, "Acceleration curve"))
-            ->setMenu(QMenuItem::create(MENU_CURVE_SHAPE_LINEAR, "Linear acceleration"))
-            ->setNext(QMenuItem::create(MENU_CURVE_SHAPE_QUADRATIC, "Quadratic acceleration"))
-            ->getBack()        
-        ->setNext(QMenuItem::create(MENU_FREQ_FLOATING, "Frequency floating"))
-        ->setNext(QMenuItem::create(MENU_FREQ_UNITS_SUBMENU, "Frequency units"))
-            ->setMenu(QMenuItem::create(MENU_FREQ_UNITS_RPM, "Rotates per minute"))
-            ->setNext(QMenuItem::create(MENU_FREQ_UNITS_HZ, "Hertz"))
-            ->getBack()  
-        ->setNext(QMenuItem::create(MENU_EXIT, "Exit"));
-
-    //Set menu events
+    //Set menu events and create structure
     menu.setOnActiveItemChanged(activeItemChanged);
     menu.setOnItemUtilized(onItemUtilized);
+    populateMenu(menu);
 
     // Setup menu rederer
     menuRenderer.setOnRenderItem(onRenderMenuItem);  
