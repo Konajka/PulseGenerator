@@ -11,15 +11,14 @@
  *      Added click and long click support.
  * @version 0.4 2019-05-14
  *      Added velocity support.
+ * @version 0.5 2019-06-21
+ *      Removed ROTARY_ENCODER_CLICKS_SUPPORT direcitve.
  */
 
 #ifndef ROTARY_ENCODER_H
 #define ROTARY_ENCODER_H
 
 #include <Arduino.h>
-
-// Undefine to disable onClick and onLongClick events to save memory space
-#define ROTARY_ENCODER_CLICKS_SUPPORT
 
 // Long click minimal time
 #define ROTARY_ENCODER_LONG_CLICK_MILLIS 450
@@ -42,10 +41,8 @@ struct RotaryEncoderOnSwitchEvent {
 typedef void (*RotaryEncoderOnSwitch) (RotaryEncoderSwitchAction);
 
 // Click and long-click event
-#ifdef ROTARY_ENCODER_CLICKS_SUPPORT
 typedef void (*RotaryEncoderOnClick) ();
 typedef void (*RotaryEncoderOnLongClick) ();
-#endif
 
 /**
  * Rotary encoder controller class.
@@ -69,18 +66,14 @@ class RotaryEncoder
         // Events
         RotaryEncoderOnChange _onChange = NULL;
         RotaryEncoderOnSwitch _onSwitch = NULL;
-        #ifdef ROTARY_ENCODER_CLICKS_SUPPORT
         RotaryEncoderOnClick _onClick = NULL;
         RotaryEncoderOnLongClick _onLongClick = NULL;
-        #endif
         
         // Measuring velocity
         unsigned long _velocityTime = 0;
                 
         // Long click time measuring
-        #ifdef ROTARY_ENCODER_CLICKS_SUPPORT
         unsigned long _switchPressTime = 0;
-        #endif
 
     protected:
     
@@ -114,7 +107,6 @@ class RotaryEncoder
             }
         }
         
-        #ifdef ROTARY_ENCODER_CLICKS_SUPPORT
         /**
          * Calls onClick event if assigned.
          */ 
@@ -132,7 +124,6 @@ class RotaryEncoder
                 _onLongClick();
             }
         }              
-        #endif
 
     public:
     
@@ -181,8 +172,6 @@ class RotaryEncoder
             _onSwitch = onSwitch;
         }
         
-        #ifdef ROTARY_ENCODER_CLICKS_SUPPORT
-        
         /**
          * Gets onClick callback.
          * 
@@ -218,8 +207,6 @@ class RotaryEncoder
         void setOnLongClick(RotaryEncoderOnLongClick onLongClick) {
             _onLongClick = onLongClick;
         }    
-        
-        #endif           
 
         /**
          * Initializes controller. Call this once before encoder use.
@@ -275,14 +262,12 @@ class RotaryEncoder
             }
             
             // Detect long click
-            #ifdef ROTARY_ENCODER_CLICKS_SUPPORT
             if (_switchPressTime > 0) {
                 if ((millis() - _switchPressTime) > ROTARY_ENCODER_LONG_CLICK_MILLIS) {
                     _switchPressTime = 0;
                     doOnLongClick();
                 }                
             }
-            #endif
 
             // Detect switch press or release
             int pinSw = digitalRead(_PIN_SWITCH);
@@ -290,16 +275,12 @@ class RotaryEncoder
                 _pinSwitchRetain = pinSw;
                 if (pinSw == HIGH) {                    
                     doOnSwitch(release);                    
-                    #ifdef ROTARY_ENCODER_CLICKS_SUPPORT
                     if (_switchPressTime > 0) {
                         _switchPressTime = 0;
                         doOnClick();
                     }                     
-                    #endif
                 } else {
-                    #ifdef ROTARY_ENCODER_CLICKS_SUPPORT
                     _switchPressTime = millis();
-                    #endif
                     doOnSwitch(press);
                 }
             }
