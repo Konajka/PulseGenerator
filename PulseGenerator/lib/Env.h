@@ -2,7 +2,7 @@
 #define ENV_H
 
 /* Menu constants */
-#define MENU_SETUP 1
+#define MENU_GENERATOR 1
 #define MENU_MIN_FREQ 11
 #define MENU_MAX_FREQ 12
 #define MENU_PULSE_RATIO 13
