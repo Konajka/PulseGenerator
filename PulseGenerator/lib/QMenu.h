@@ -18,6 +18,10 @@
  *  Added user custom tag and data pointer definition.
  * @version 0.7 2019-05-20
  *  Fixed active menu item changing to change before event is yield.
+ * @version 0.8 2019-06-21
+ *  Removed QMENU_USE_EXTENDED_INFO directive.
+ * @version 0.9 2019-06-23
+ *  Added checkable and radio item support.
  */
 
 #ifndef QMENU_H
@@ -26,20 +30,37 @@
 #include <Arduino.h>
 #include <String.h>
 
-// Undefine to lower memory consumption
-#define QMENU_USE_EXTENDED_INFO
+#define QMENU_ITEM_REGULAR 0
+#define QMENU_ITEM_CHECKABLE 255
 
 /**
  * @brief Menu item definition.
  */
 class QMenuItem {
     private:
+        /* Item identification */
         int _id;
+
+        /* Printable caption */
         char* _caption;
-        #ifdef QMENU_USE_EXTENDED_INFO
-        int _tag;
-        void* _data;
-        #endif
+
+        /* Custom integer data */
+        int _tag = 0;
+
+        /* Custom pointer data */
+        void* _data = NULL;
+
+        /* Group index
+            0 - regular item, not groupped, not checkable
+            1-254 - item is radio item, number is radio group index
+            255 - item is checkable
+         */
+        byte _groupIndex = QMENU_ITEM_REGULAR;
+
+        /* Radio group item or checkable item checked flag */
+        bool _checked = false;
+
+        /* Links to neighbour items */
         QMenuItem* _back = NULL;
         QMenuItem* _menu = NULL;
         QMenuItem* _prev = NULL;
@@ -65,7 +86,9 @@ class QMenuItem {
          * @param tag User defined integer value.
          */
         static QMenuItem* create(int id, char* caption, int tag) {
-            return new QMenuItem(id, caption);
+            QMenuItem* item = new QMenuItem(id, caption);
+            item->setTag(tag);
+            return item;
         }
 
         /**
@@ -76,7 +99,9 @@ class QMenuItem {
          * @param data User defined data pointer.
          */
         static QMenuItem* create(int id, char* caption, void* data) {
-            return new QMenuItem(id, caption);
+            QMenuItem* item = new QMenuItem(id, caption);
+            item->setData(data);
+            return item;
         }
 
         /**
@@ -88,7 +113,126 @@ class QMenuItem {
          * @param data User defined data pointer.
          */
         static QMenuItem* create(int id, char* caption, int tag, void* data) {
-            return new QMenuItem(id, caption);
+            QMenuItem* item = new QMenuItem(id, caption);
+            item->setTag(tag);
+            item->setData(data);
+            return item;
+        }
+
+        /**
+         * @brief Static QMenuItem instantiating and initialization.
+         * @param id Menu item identification. This could be unique integer value, but no unique
+         *      test is performed.
+         * @param caption Menu item caption.
+         * @param groupIndex Item's group index to be set.
+         */
+        static QMenuItem* createRadio(int id, char* caption, byte groupIndex) {
+            QMenuItem* item = new QMenuItem(id, caption);
+            item->setGroupIndex(groupIndex);
+            return item;
+        }
+
+        /**
+         * @brief Static QMenuItem instantiating and initialization.
+         * @param id Menu item identification. This could be unique integer value, but no unique
+         *      test is performed.
+         * @param caption Menu item caption.
+         * @param groupIndex Item's group index to be set.
+         * @param tag User defined integer value.
+         */
+        static QMenuItem* createRadio(int id, char* caption, byte groupIndex, int tag) {
+            QMenuItem* item = new QMenuItem(id, caption);
+            item->setGroupIndex(groupIndex);
+            item->setTag(tag);
+            return item;
+        }
+
+        /**
+         * @brief Static QMenuItem instantiating and initialization.
+         * @param id Menu item identification. This could be unique integer value, but no unique
+         *      test is performed.
+         * @param caption Menu item caption.
+         * @param groupIndex Item's group index to be set.
+         * @param data User defined data pointer.
+         */
+        static QMenuItem* createRadio(int id, char* caption, byte groupIndex, void* data) {
+            QMenuItem* item = new QMenuItem(id, caption);
+            item->setGroupIndex(groupIndex);
+            item->setData(data);
+            return item;
+        }
+
+        /**
+         * @brief Static QMenuItem instantiating and initialization.
+         * @param id Menu item identification. This could be unique integer value, but no unique
+         *      test is performed.
+         * @param caption Menu item caption.
+         * @param groupIndex Item's group index to be set.
+         * @param tag User defined integer value.
+         * @param data User defined data pointer.
+         */
+        static QMenuItem* createRadio(int id, char* caption, byte groupIndex, int tag, void* data) {
+            QMenuItem* item = new QMenuItem(id, caption);
+            item->setGroupIndex(groupIndex);
+            item->setTag(tag);
+            item->setData(data);
+            return item;
+        }
+
+                /**
+         * @brief Static QMenuItem instantiating and initialization.
+         * @param id Menu item identification. This could be unique integer value, but no unique
+         *      test is performed.
+         * @param caption Menu item caption.
+         */
+        static QMenuItem* createCheckable(int id, char* caption) {
+            QMenuItem* item = new QMenuItem(id, caption);
+            item->setGroupIndex(QMENU_ITEM_CHECKABLE);
+            return item;
+        }
+
+        /**
+         * @brief Static QMenuItem instantiating and initialization.
+         * @param id Menu item identification. This could be unique integer value, but no unique
+         *      test is performed.
+         * @param caption Menu item caption.
+         * @param tag User defined integer value.
+         */
+        static QMenuItem* createCheckable(int id, char* caption, int tag) {
+            QMenuItem* item = new QMenuItem(id, caption);
+            item->setGroupIndex(QMENU_ITEM_CHECKABLE);
+            item->setTag(tag);
+            return item;
+        }
+
+        /**
+         * @brief Static QMenuItem instantiating and initialization.
+         * @param id Menu item identification. This could be unique integer value, but no unique
+         *      test is performed.
+         * @param caption Menu item caption.
+         * @param data User defined data pointer.
+         */
+        static QMenuItem* createCheckable(int id, char* caption, void* data) {
+            QMenuItem* item = new QMenuItem(id, caption);
+            item->setGroupIndex(QMENU_ITEM_CHECKABLE);
+            item->setData(data);
+            return item;
+        }
+
+        /**
+         * @brief Static QMenuItem instantiating and initialization.
+         * @param id Menu item identification. This could be unique integer value, but no unique
+         *      test is performed.
+         * @param caption Menu item caption.
+         * @param tag User defined integer value.
+         * @param data User defined data pointer.
+         */
+        static QMenuItem* createCheckable(int id, char* caption, int tag, void* data) {
+            QMenuItem* item = new QMenuItem(id, caption);
+            item->setGroupIndex(QMENU_ITEM_CHECKABLE);
+            item->setTag(tag);
+            item->setData(data);
+            return item;
         }
 
         /**
@@ -100,46 +244,6 @@ class QMenuItem {
             _id = id;
             _caption = caption;
         }
-
-        #ifdef QMENU_USE_EXTENDED_INFO
-        /**
-         * @brief Creates new QMenuItem instance.
-         * @param id Menu item identification.
-         * @param caption Menu item caption.
-         * @param tag User defined integer value.
-         */
-        QMenuItem(int id, char* caption, int tag) {
-            _id = id;
-            _caption = caption;
-            _tag = tag;
-        }
-
-        /**
-         * @brief Creates new QMenuItem instance.
-         * @param id Menu item identification.
-         * @param caption Menu item caption.
-         * @param data User defined data pointer.
-         */
-        QMenuItem(int id, char* caption, void* data) {
-            _id = id;
-            _caption = caption;
-            _data = data;
-        }
-
-        /**
-         * @brief Creates new QMenuItem instance.
-         * @param id Menu item identification.
-         * @param caption Menu item caption.
-         * @param tag User defined integer value.
-         * @param data User defined data pointer.
-         */
-        QMenuItem(int id, char* caption, int tag, void* data) {
-            _id = id;
-            _caption = caption;
-            _tag = tag;
-            _data = data;
-        }
-        #endif
 
         /**
          * @brief Gets menu item identification.
@@ -157,7 +261,6 @@ class QMenuItem {
             return this->_caption;
         }
 
-        #ifdef QMENU_USE_EXTENDED_INFO
         /**
          * @brief Gets user custom integer value.
          * @return Returns tag value.
@@ -187,7 +290,97 @@ class QMenuItem {
         void setData(void* data) {
             _data = data;
         }
-        #endif
+
+        /**
+         * @brief Gets if this menu item is flagged as checked. This flag does not depend on item's
+         * group index (or item type).
+         * @return Returns true if this item is checked or false if not.
+         */
+        bool isChecked() {
+            return _checked;
+        }
+
+        /**
+         * @brief Sets this menu item checked flag. This flag does not depend on item's group index
+         * (or item type) and does not affects other items in same group defined via
+         * setGroupIndex().
+         * @param checked Set true to flag this item checked or false to unchecked.
+         */
+        bool setChecked(bool checked) {
+            _checked = checked;
+        }
+
+        /**
+         * @brief Gets item's group index.
+         * @return Returns group index number. Number meaning is:
+         *      Value QMENU_ITEM_REGULAR (0) means that item is regular item and is not grouped.
+         *      Value QMENU_ITEM_CHECKABLE (255) means that item is checkable and should be
+         *          interpreted as checkable. Current state is controlled via isChecked() and
+         *          setChecked() methods.
+         *      Value between 1-254 (including) means that item is radio group item in group of
+         *          items with same value. Current state is controlled via isChecked() and
+         *          setChecked() methods.
+         */
+        byte getGroupIndex() {
+            return _groupIndex;
+        }
+
+        /**
+         * @brief Sets item's group index. Setting it, does not affect isChecked() value.
+         * @param groupIndex Value of group index to be set. This number meaning is:
+         *      Value QMENU_ITEM_REGULAR (0) means that item is regular item and is not grouped.
+         *      Value QMENU_ITEM_CHECKABLE (255) means that item is checkable and should be
+         *          interpreted as checkable. Current state is controlled via isChecked() and
+         *          setChecked() methods.
+         *      Value between 1-254 (including) means that item is radio group item in group of
+         *          items with same value. Current state is controlled via isChecked() and
+         *          setChecked() methods.
+         */
+        void setGroupIndex(byte groupIndex) {
+            _groupIndex = groupIndex;
+        }
+
+        /**
+         * @brief Gets if the item is regular menu item (not radio or checkable item).
+         * @return Returns true if this item is regular item or false if not.
+         */
+        bool isRegular() {
+            return _groupIndex == QMENU_ITEM_REGULAR;
+        }
+
+        /**
+         * @brief Sets item's type to regular menu item using group index value
+         * QMENU_ITEM_REGULAR (0).
+         */
+        void setRegular() {
+            setGroupIndex(QMENU_ITEM_REGULAR);
+        }
+
+
+        /**
+         * @brief Gets if the item is radio group item (has set valid radio group index).
+         * @return Returns true if this item is radio group item or false if not.
+         */
+        bool isRadio() {
+            return (_groupIndex > QMENU_ITEM_REGULAR) && (_groupIndex < QMENU_ITEM_CHECKABLE);
+        }
+
+        /**
+         * @brief Gets if the item is checkable menu item.
+         * @return Returns true if this item is checkable item or false if not.
+         */
+        bool isCheckable() {
+            return _groupIndex == QMENU_ITEM_CHECKABLE;
+        }
+
+        /**
+         * @brief Sets this item type to checkable menu item using group index value
+         * QMENU_ITEM_CHECKABLE (255).
+         * @param value Set to true to set item chechable or false to set item to be regular item.
+         */
+        void setCheckable(bool value) {
+            _groupIndex = value ? QMENU_ITEM_CHECKABLE : QMENU_ITEM_REGULAR;
+        }
 
         /**
          * @brief Gets parent menu item.
@@ -195,6 +388,14 @@ class QMenuItem {
          */
         QMenuItem* getBack() {
             return this->_back;
+        }
+
+        /**
+         * @brief Gets if this item has submenu.
+         * @return Returns if this item has submenu or false if not.
+         */
+        bool hasSubmenu() {
+            return this->_menu != NULL;
         }
 
         /**
@@ -453,6 +654,75 @@ class QMenu {
 
             return NULL;
         }
+
+        /**
+         * @brief Gets top most item from current.
+         * @param item Custom menu item.
+         * @return Returns top most item in menu or submenu or NULL if given
+         *      item is NULL.
+         */
+        QMenuItem* getTopItem(QMenuItem* item) {
+            if (item == NULL) {
+                return NULL;
+            }
+
+            QMenuItem* top = item;
+            while (top->getPrev() != NULL) {
+                top = top->getPrev();
+            }
+            return top;
+        }
+
+        /**
+         * @brief Toggles item's checked state if item is checkable.
+         * @param item Item to be toggled. Item has to be checkable.
+         * @return Returns pointer to item that has been checked or unchecked or NULL this item is
+         * not checkable.
+         */
+        QMenuItem* toggleCheckable(QMenuItem* item) {
+            if (item->isCheckable()) {
+                item->setChecked(!item->isChecked());
+                return item;
+            }
+
+            return NULL;
+        }
+
+        /**
+         * @brief Switches radio items in group. Turns given item to be checked and all items at
+         * given menu level with same group index to be unchecked.
+         * @param switchItem Item to be checked in radio group. This item must be radio item.
+         * @return Returns pointer to item that has been checked or NULL if item is not radio item.
+         */
+        QMenuItem* switchRadio(QMenuItem* switchItem) {
+            // If given item is not radio item, invalid call
+            if (!switchItem->isRadio()) {
+                return NULL;
+            }
+
+            // If given item is already checked, nothing to do
+            if (switchItem->isChecked()) {
+                return switchItem;
+            }
+
+            // Get first item in given item's level
+            QMenuItem* item = getTopItem(switchItem);
+            byte groupIndex = switchItem->getGroupIndex();
+
+            // Loop for all items in level
+            while (item != NULL) {
+
+                // Check given item or uncheck others in group
+                if (item->isRadio() && item->getGroupIndex() == groupIndex) {
+                        item->setChecked(item == switchItem);
+                }
+
+                // Next item
+                item = item->getNext();
+            }
+
+            return switchItem;
+        }
 };
 
 /** QMenuRenderer onItemRender event data */
@@ -614,31 +884,13 @@ class QMenuListRenderer : public QMenuRenderer {
             }
 
             // Get first item in current menu
-            QMenuItem* top = getTopItem(active);
+            QMenuItem* top = this->menu->getTopItem(active);
 
             // Calc viewport position
             calcViewportIndex(top, active);
 
             // Render viewport
             renderItemsInViewport(top, active);
-        }
-
-        /**
-         * @brief Gets top most item from current.
-         * @param item Custom menu item.
-         * @return Returns top most item in menu or submenu or NULL if given
-         *      item is NULL.
-         */
-        QMenuItem* getTopItem(QMenuItem* item) {
-            if (item == NULL) {
-                return NULL;
-            }
-
-            QMenuItem* top = item;
-            while (top->getPrev() != NULL) {
-                top = top->getPrev();
-            }
-            return top;
         }
 };
 
