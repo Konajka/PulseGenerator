@@ -5,7 +5,7 @@
 #define MENU_GENERATOR 1
 #define MENU_MIN_FREQ 11
 #define MENU_MAX_FREQ 12
-#define MENU_PULSE_RATIO 13
+#define MENU_PULSE_WIDTH 13
 #define MENU_CURVE_SHAPE_SUBMENU 14
 #define MENU_CURVE_SHAPE_LINEAR 141
 #define MENU_CURVE_SHAPE_QUADRATIC 142
@@ -26,7 +26,7 @@ void populateMenu(QMenu& menu) {
     menu.getRoot()
         ->setMenu(QMenuItem::create(MENU_MIN_FREQ, "Minimal frequency"))
         ->setNext(QMenuItem::create(MENU_MAX_FREQ, "Maximal frequency"))
-        ->setNext(QMenuItem::create(MENU_PULSE_RATIO, "Pulse ratio"))
+        ->setNext(QMenuItem::create(MENU_PULSE_WIDTH, "Pulse ratio"))
         ->setNext(QMenuItem::create(MENU_CURVE_SHAPE_SUBMENU, "Acceleration curve"))
             ->setMenu(QMenuItem::create(MENU_CURVE_SHAPE_LINEAR, "Linear acceleration"))
             ->setNext(QMenuItem::create(MENU_CURVE_SHAPE_QUADRATIC, "Quadratic acceleration"))

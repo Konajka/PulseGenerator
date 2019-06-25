@@ -46,6 +46,10 @@ U8GLIB_SSD1306_128X64 oled(U8G_I2C_OPT_NONE);
 QMenu menu(MENU_GENERATOR, "Generator");
 QMenuListRenderer menuRenderer(&menu, MENU_SIZE);
 
+/* Drawing values */
+#define GL_BASE_PADDING 1
+#define GL_MENU_PADDING 1
+
 /* Display render period in ms */
 #define OLED_REFRESH_PERIOD 200
 
@@ -53,14 +57,14 @@ QMenuListRenderer menuRenderer(&menu, MENU_SIZE);
 struct Settings {
     word minFreq;
     word maxFreg;
-    byte freqRatio;
+    byte pulseWidth;
     byte accelerationCurve;
     byte freqFloating;
     byte freqUnits;
 } settings = {
     10, // 10Hz ~ 600rpm
     200, // 200Hz ~ 12000 rpm
-    5, // 5% pulse width 
+    5, // 5 ms
     ACCELERATION_SHAPE_LINEAR, // default acceleration type
     0, // default frequency floating 0%
     FREQ_UNITS_RPM 
@@ -154,18 +158,19 @@ void renderGenerator() {
     oled.firstPage();
     do {
         // Current frequency
-        String text = String(frequency);
+        char freq[16];
+        sprintf(freq, "%d", frequency);
+        
         oled.setDefaultForegroundColor();
         oled.setFont(u8g_font_fur30n);
         oled.setFontRefHeightText();
         oled.setFontPosTop();
-        oled.drawStr(0, 0, text.c_str()); 
+        oled.drawStr(0, 0, freq); 
         
         // Bottom line info
         oled.setFont(u8g_font_6x13);
         oled.setFontPosBottom();
-        text = settings.freqUnits == FREQ_UNITS_RPM ? "rpm" : "Hz";
-        oled.drawStr(0, 60, text.c_str());
+        oled.drawStr(0, 60, settings.freqUnits == FREQ_UNITS_RPM ? "rpm" : "Hz");
     } while (oled.nextPage());
 }
 
@@ -174,14 +179,40 @@ void renderMeasure() {
     #ifdef SERIAL_LOG
     Serial.println("renderMeasure()");
     #endif
+
+    char* value = NULL;
+    char* units = NULL;
+
+    switch (selected->getId()) {
+        case MENU_PULSE_WIDTH: 
+            value = settings.pulseWidth;
+            break;
+    }
     
-    // TODO Draw settings item value measure
-    oled.firstPage();
+    // Draw settings item value measure
     oled.setDefaultForegroundColor();
-    oled.setFont(u8g_font_6x13);
-    oled.setFontPosTop();    
-    do {
-        oled.drawStr(0, 30, "Measure item");
+    
+    oled.firstPage();
+    do {        
+        // Measured item caption        
+        oled.setFont(u8g_font_6x13);
+        oled.setFontPosTop();
+        oled.drawStr(GL_BASE_PADDING, GL_BASE_PADDING, selected->getCaption());
+
+        // Measured item units
+        if (units != NULL) {
+            oled.setFont(u8g_font_6x13);
+            oled.setFontPosBottom();            
+            oled.drawStr(GL_BASE_PADDING, oled.getHeight() - GL_BASE_PADDING, units);
+        }
+
+        // Measured value
+        if (value != NULL) {
+            oled.setFont(u8g_font_fur30n);
+            oled.setFontPosTop();
+            oled.drawStr(GL_BASE_PADDING, oled.getHeight() - GL_BASE_PADDING, value);
+        }
+        
     } while (oled.nextPage()); 
 }
 
@@ -211,7 +242,7 @@ void encoderOnChange(RotaryEncoderOnChangeEvent event) {
                 // TODO change value and request render
                 break;
                 
-            case MENU_PULSE_RATIO:
+            case MENU_PULSE_WIDTH:
                 // TODO change value and request render
                 break;
             case MENU_FREQ_FLOATING:
@@ -272,7 +303,7 @@ void onItemUtilized(QMenuItemUtilizedEvent event) {
         // Setup item value measuring
         case MENU_MIN_FREQ:
         case MENU_MAX_FREQ:
-        case MENU_PULSE_RATIO:
+        case MENU_PULSE_WIDTH:
         case MENU_FREQ_FLOATING:
             measureSettingsValue = true;
             renderMeasure();
@@ -289,17 +320,14 @@ void onRenderMenuItem(QMenuRenderItemEvent event) {
     oled.setFont(u8g_font_6x13);
     oled.setFontRefHeightText();
     oled.setFontPosTop();
-
-    u8g_uint_t padding = 1;
-    u8g_uint_t width = oled.getWidth();
-    u8g_uint_t height = oled.getFontAscent() - oled.getFontDescent() + padding;
+    u8g_uint_t height = oled.getFontAscent() - oled.getFontDescent() + GL_MENU_PADDING;
     
     oled.setDefaultForegroundColor();
     if (event.isActive) {
-        oled.drawBox(0, height * event.renderIndex, width, height + padding);
+        oled.drawBox(0, height * event.renderIndex, oled.getWidth(), height + GL_MENU_PADDING);
         oled.setDefaultBackgroundColor();
     }
-    oled.drawStr(padding, height * event.renderIndex + padding, event.item->getCaption());
+    oled.drawStr(GL_MENU_PADDING, height * event.renderIndex + GL_MENU_PADDING, event.item->getCaption());
 }
 
 /* Loads settings from EEPROM */
