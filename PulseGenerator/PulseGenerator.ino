@@ -326,7 +326,7 @@ void onItemUtilized(QMenuItemUtilizedEvent event) {
             // Setup item value measuring
             case MENU_MIN_FREQ:
             case MENU_MAX_FREQ:
-            case MENU_PULSE_RATIO:
+            case MENU_PULSE_WIDTH:
             case MENU_FREQ_FLOATING:
                 measureSettingsValue = true;
                 renderMeasure();
@@ -352,7 +352,7 @@ void onRenderMenuItem(QMenuRenderItemEvent event) {
     oled.setFontRefHeightText();
     oled.setFontPosTop();
     oled.setDefaultForegroundColor();
-    u8g_uint_t height = oled.getFontAscent() - oled.getFontDescent() + GL_MENU_PADDING;
+    u8g_uint_t lineHeight = oled.getFontAscent() - oled.getFontDescent() + GL_MENU_PADDING;
 
     // If drawing selected item, draw bar and set bg color
     if (event.isActive) {
@@ -373,8 +373,6 @@ void onRenderMenuItem(QMenuRenderItemEvent event) {
         }
         oled.drawStr(oled.getWidth() - iconWidth - GL_MENU_PADDING, lineHeight * event.renderIndex, icon);
     }
-
-    Serial.println();
 }
 
 /* Loads settings from EEPROM */
