@@ -30,16 +30,18 @@
  *      Fixed menu controlling.
  *      Added menu icons drawing.
  *      Fixed menu constant names.
+ *      Settings loading and saving
  */
 
 #include <Arduino.h>
+#include <EEPROM.h>
 #include "U8glib.h"
 #include "lib/RotaryEncoder.h"
 #include "lib/QMenu.h"
 #include "lib/Env.h"
 
 /* Enable serial link */
-//#define SERIAL_LOG
+#define SERIAL_LOG
 
 /* Rotary encoder controller */
 #define ENCODER_CLK 5
@@ -63,7 +65,11 @@ QMenuListRenderer menuRenderer(&menu, MENU_SIZE);
 #define OLED_REFRESH_PERIOD 200
 
 /* Application settings */
+#define SETTINGS_HEADER_SIZE 5
+#define SETTINGS_HEADER_VERSION "SV01"
+#define SETTINGS_EEPROM_ADDRESS 0
 struct Settings {
+    char header[5];
     word minFreq;
     word maxFreg;
     byte pulseWidth;
@@ -72,6 +78,7 @@ struct Settings {
     byte freqUnits;
     bool useSounds;
 } settings = {
+    SETTINGS_HEADER_VERSION, // Settings header in EEPROM
     10, // 10Hz ~ 600rpm
     200, // 200Hz ~ 12000 rpm
     5, // 5 ms
@@ -289,7 +296,11 @@ void activeItemChanged(QMenuActiveItemChangedEvent event) {
     // If selected item really changed, redraw
     if (selected != event.newActiveItem) {
         selected = event.newActiveItem;
-        if (event.newActiveItem->getId() != MENU_GENERATOR) {
+
+        //Save settings when leaving menu or draw menu
+        if (event.newActiveItem->getId() == MENU_GENERATOR) {
+            saveSettings();
+        } else {
             renderMenu();
         }
     }
@@ -379,15 +390,39 @@ void onRenderMenuItem(QMenuRenderItemEvent event) {
     }
 }
 
-/* Loads settings from EEPROM */
+/* Loads settings from EEPROM if stored */
 void loadSettings() {
-    // TODO set settings values
-    // TODO update menu checkables and radios
+Serial.println("Loading settings");
+    
+    // Find settings header in EEPROM
+    bool headerFound = true;
+    for (unsigned int index = 0; index < SETTINGS_HEADER_SIZE; index++) {
+        if (EEPROM.read(SETTINGS_EEPROM_ADDRESS + index) != SETTINGS_HEADER_VERSION[index]) {
+            headerFound = false;
+            break;
+        }
+    }
+
+    // If header found, read whole settings structure
+    if (headerFound) {
+        for (unsigned int index = 0; index < sizeof(settings); index++) {
+            *((char *)&settings + index) = EEPROM.read(SETTINGS_EEPROM_ADDRESS + index);
+        }
+
+        // TODO Update menu checkables and radios from loaded settings
+        Serial.println("Settings loaded");
+    } else {
+        Serial.println("Header not found");
+    }
 }
 
 /* Stores settings into EEPROM */
 void saveSettings() {
-    // TODO
+    Serial.println("Saving settings");
+    
+    for (unsigned int index = 0; index < sizeof(settings); index++) {
+        EEPROM.update(SETTINGS_EEPROM_ADDRESS + index, *((char *)&settings + index));
+    }
 }
 
 /* Calucates frequency from min and max value and A/D current value */
