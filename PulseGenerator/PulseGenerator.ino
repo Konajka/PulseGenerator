@@ -70,13 +70,15 @@ struct Settings {
     byte accelerationCurve;
     byte freqFloating;
     byte freqUnits;
+    bool useSounds;
 } settings = {
     10, // 10Hz ~ 600rpm
     200, // 200Hz ~ 12000 rpm
     5, // 5 ms
     ACCELERATION_SHAPE_LINEAR, // default acceleration type
     0, // default frequency floating 0%
-    FREQ_UNITS_RPM
+    FREQ_UNITS_RPM,
+    false
 };
 
 /* Last renreding millis */
@@ -299,7 +301,9 @@ void onItemUtilized(QMenuItemUtilizedEvent event) {
         menu.back();
     } else if (event.utilizedItem->isCheckable()) {
         menu.toggleCheckable(event.utilizedItem);
-        // No checkable item to be saved to settings
+        if (event.utilizedItem->getId() == MENU_SOUND) {
+            settings.useSounds = event.utilizedItem->isChecked(); 
+        }
         renderMenu();
     } else if (event.utilizedItem->isRadio()) {
         menu.switchRadio(event.utilizedItem);

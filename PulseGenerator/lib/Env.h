@@ -13,6 +13,7 @@
 #define MENU_FREQ_UNITS_SUBMENU 16
 #define MENU_FREQ_UNITS_RPM 161
 #define MENU_FREQ_UNITS_HZ 162
+#define MENU_SOUND 17
 #define MENU_BACK 0
 
 #define ACCELERATION_SHAPE_LINEAR 0
@@ -26,7 +27,7 @@ void populateMenu(QMenu& menu) {
     menu.getRoot()
         ->setMenu(QMenuItem::create(MENU_MIN_FREQ, "Minimal frequency"))
         ->setNext(QMenuItem::create(MENU_MAX_FREQ, "Maximal frequency"))
-        ->setNext(QMenuItem::create(MENU_PULSE_WIDTH, "Pulse ratio"))
+        ->setNext(QMenuItem::create(MENU_PULSE_WIDTH, "Pulse width"))
         ->setNext(QMenuItem::create(MENU_CURVE_SHAPE_SUBMENU, "Acceleration curve"))
             ->setMenu(QMenuItem::createRadio(MENU_CURVE_SHAPE_LINEAR, "Linear curve", MENU_CURVE_SHAPE_SUBMENU, true))
             ->setNext(QMenuItem::createRadio(MENU_CURVE_SHAPE_QUADRATIC, "Quadratic curve", MENU_CURVE_SHAPE_SUBMENU, false))
@@ -38,6 +39,7 @@ void populateMenu(QMenu& menu) {
             ->setNext(QMenuItem::createRadio(MENU_FREQ_UNITS_HZ, "Hertz", MENU_FREQ_UNITS_SUBMENU, false))
             ->setNext(QMenuItem::create(MENU_BACK, "Back"))
             ->getBack()
+        ->setNext(QMenuItem::createCheckable(MENU_SOUND, "Sound", true))
         ->setNext(QMenuItem::create(MENU_BACK, "Back"));
 }
 
