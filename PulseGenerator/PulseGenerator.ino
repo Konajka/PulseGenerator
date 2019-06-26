@@ -9,6 +9,8 @@
  * - Arduino Nano
  * - Rotary encoder KY-040
  * - I2C OLED display 0,96" 128x64 (SSD-1306)
+ * - Potentiometer 10k/N
+ * - Buzzer
  * 
  * @author https://github.com/Konajka
  * @version 0.1 2019-05-02
@@ -21,6 +23,13 @@
  * @version 0.4 2019-06-18     
  *      Set state model.
  *      Fixed font sizes.
+ * @version 0.5 2019-06-26     
+ *      Updated QMenu library.
+ *      Fixed menu rendering.
+ *      Fixed display rendering.
+ *      Fixed menu controlling.
+ *      Added menu icons drawing.
+ *      Fixed menu constant names.
  */
 
 #include <Arduino.h>
@@ -108,7 +117,7 @@ void setup() {
     // Render menu 
     oledLastRefresh = millis();
     renderSplash();
-    delay(10000);
+    delay(1000);
 }
 
 /* Render splash screen */
@@ -118,17 +127,14 @@ void renderSplash() {
     oled.setFontPosTop();
     oled.setDefaultForegroundColor();
 
-    char* text = "Pulse generator";
-    u8g_uint_t textWidth = oled.getStrWidth(text);
+    char* logo = "Pulse generator";
+    u8g_uint_t textWidth = oled.getStrWidth(logo);
     u8g_uint_t fontHeight = oled.getFontAscent() - oled.getFontDescent();
     u8g_uint_t left = (oled.getWidth() - textWidth) / 2;
     u8g_uint_t top = (oled.getHeight() - fontHeight) / 2;
     oled.firstPage();    
     do {
-        oled.drawStr(left, top, text);
-        
-        oled.setFont(u8g_font_6x13_75r);
-        oled.drawStr(0, 40, "\x50 \x51");
+        oled.drawStr(left, top, logo);
     } while (oled.nextPage());    
 }
 
@@ -147,10 +153,6 @@ void loop() {
 
 /* Render main screen */
 void renderGenerator() {
-    #ifdef SERIAL_LOG
-    Serial.println("renderGenerator()");
-    #endif
-    
     oled.firstPage();
     do {
         // Current frequency
@@ -171,10 +173,7 @@ void renderGenerator() {
 
 /* Render setup item value measuring */
 void renderMeasure() {
-    #ifdef SERIAL_LOG
-    Serial.println("renderMeasure()");
-    #endif
-    
+
     // TODO Draw settings item value measure
     oled.firstPage();
     oled.setDefaultForegroundColor();
@@ -188,10 +187,6 @@ void renderMeasure() {
 
 /* Renders menu menu in current state on oled */
 void renderMenu() {
-    #ifdef SERIAL_LOG
-    Serial.println("renderMenu()");
-    #endif
-    
     oled.firstPage();
     do {
         menuRenderer.render();
@@ -222,11 +217,10 @@ void encoderOnChange(RotaryEncoderOnChangeEvent event) {
     } else if (selected->getId() != MENU_GENERATOR) {
         // Move in menu
         if (event.direction == left) {
-            selected = menu.prev();
+            menu.prev();
         } else if (event.direction == right) {
-            selected = menu.next();
+            menu.next();
         }
-        renderMenu();    
     }
 }
 
@@ -239,72 +233,135 @@ void encoderOnClick() {
         renderMenu();
     } else { 
         // Menu click
-        selected = menu.enter(); 
-        // No need to request render, menu controller does it
+        menu.enter();
     }
 }
 
 /* Encoder long click event */
 void encoderOnLongClick() {
+    // TODO Long click held one moment longer causes short click in menu
+    
     if (measureSettingsValue) {
         // Discard measured value and escape measuring
         measureSettingsValue = false;
         renderMenu();
     } else if (selected->getId() != MENU_GENERATOR) {
         // Get up in the menu
-        selected = menu.back(); 
-        if (selected->getId() == MENU_GENERATOR) {
-            renderGenerator();
-        }
+        menu.back();
     }
 }
 
 /* Menu item changed */
 void activeItemChanged(QMenuActiveItemChangedEvent event) {
-    renderMenu();
+    // If selected item really changed, redraw
+    if (selected != event.newActiveItem) {
+        selected = event.newActiveItem;
+        if (event.newActiveItem->getId() != MENU_GENERATOR) {
+            renderMenu();
+        }
+    }
 }
 
 /* Menu item used */
 void onItemUtilized(QMenuItemUtilizedEvent event) {
-    // Switch action via currently selected menu item
-    switch (event.utilizedItem->getId()) {
-
-        // Setup item value measuring
-        case MENU_MIN_FREQ:
-        case MENU_MAX_FREQ:
-        case MENU_PULSE_RATIO:
-        case MENU_FREQ_FLOATING:
-            measureSettingsValue = true;
-            renderMeasure();
-            break;
-
-        // Common menu item click (radiogroup or checkbox item)
-        default:
-            renderMenu();
+    if (event.utilizedItem->getId() == MENU_BACK) {
+        menu.back();
+    } else if (event.utilizedItem->isCheckable()) {
+        menu.toggleCheckable(event.utilizedItem);
+        // No checkable item to be saved to settings
+        renderMenu();
+    } else if (event.utilizedItem->isRadio()) {
+        menu.switchRadio(event.utilizedItem);
+        switch (event.utilizedItem->getId()) {
+            case MENU_CURVE_SHAPE_LINEAR:
+                settings.accelerationCurve = ACCELERATION_SHAPE_LINEAR;
+                break;
+            case MENU_CURVE_SHAPE_QUADRATIC:
+                settings.accelerationCurve = ACCELERATION_SHAPE_LINEAR;
+                break;
+            case MENU_FREQ_UNITS_RPM:
+                settings.freqUnits = FREQ_UNITS_RPM;
+                break;
+            case MENU_FREQ_UNITS_HZ:
+                settings.freqUnits = FREQ_UNITS_HZ;
+                break;
+        }
+        renderMenu();
+    } else {
+    
+        // Switch action via currently selected menu item
+        switch (event.utilizedItem->getId()) {
+    
+            // Setup item value measuring
+            case MENU_MIN_FREQ:
+            case MENU_MAX_FREQ:
+            case MENU_PULSE_RATIO:
+            case MENU_FREQ_FLOATING:
+                measureSettingsValue = true;
+                renderMeasure();               
+                break;
+        }
     }
 }
 
 /* Render menu item */
 void onRenderMenuItem(QMenuRenderItemEvent event) {
+    Serial.print(event.item->getCaption());
+    Serial.print(" ");
+    
+    // Item icon
+    char icon[2] = "";
+    if (event.item->getMenu() != NULL) {
+        strcpy(icon, "\x36");
+        Serial.print("> ");
+    } else if (event.item->isRadio()) {
+        strcpy(icon, event.item->isChecked() ? "\x49" : "\x4b");
+        Serial.print(event.item->isChecked() ? "(o) " : "( ) ");
+    } else if (event.item->isCheckable()) {
+        strcpy(icon, event.item->isChecked() ? "\x23" : "\x21");  
+        Serial.print(event.item->isChecked() ? "[x] " : "[ ] ");  
+    }
+
+    // Setup font for menu caption
     oled.setFont(u8g_font_6x13);
     oled.setFontRefHeightText();
     oled.setFontPosTop();
 
+    // Calculate dimensions
     u8g_uint_t padding = 1;
     u8g_uint_t width = oled.getWidth();
-    u8g_uint_t height = oled.getFontAscent() - oled.getFontDescent() + padding;
-    
+    u8g_uint_t lineHeight = oled.getFontAscent() - oled.getFontDescent() + padding;
+
+    // Set draw color to common item
     oled.setDefaultForegroundColor();
+
+    // If drawing selected item, draw bar and set bg color
     if (event.isActive) {
-        oled.drawBox(0, height * event.renderIndex, width, height + padding);
+        oled.drawBox(0, lineHeight * event.renderIndex, width, lineHeight + padding);
         oled.setDefaultBackgroundColor();
     }
-    oled.drawStr(padding, height * event.renderIndex + padding, event.item->getCaption());
+    oled.drawStr(padding, lineHeight * event.renderIndex + padding, event.item->getCaption());
+
+    // Draw item's icon
+    if (strlen(icon) > 0) {      
+        oled.setFont(u8g_font_8x13_75r);
+        oled.setFontPosTop();
+        u8g_uint_t iconWidth = oled.getStrWidth(icon);
+        if (event.isActive) {
+            oled.setDefaultBackgroundColor();
+        } else {
+            oled.setDefaultForegroundColor();
+        }
+        oled.drawStr(width - iconWidth - padding, lineHeight * event.renderIndex, icon);
+    }
+
+    Serial.println();
 }
 
 /* Loads settings from EEPROM */
 void loadSettings() {
-    // TODO
+    // TODO set settings values
+    // TODO update menu checkables and radios
 }
 
 /* Stores settings into EEPROM */
