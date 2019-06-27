@@ -13,7 +13,7 @@
 #define MENU_FREQ_UNITS_SUBMENU 16
 #define MENU_FREQ_UNITS_RPM 161
 #define MENU_FREQ_UNITS_HZ 162
-#define MENU_SOUND 17
+#define MENU_SOUNDS 17
 #define MENU_BACK 0
 
 #define ACCELERATION_SHAPE_LINEAR 0
@@ -39,7 +39,7 @@ void populateMenu(QMenu& menu) {
             ->setNext(QMenuItem::createRadio(MENU_FREQ_UNITS_HZ, "Hertz", MENU_FREQ_UNITS_SUBMENU, false))
             ->setNext(QMenuItem::create(MENU_BACK, "Back"))
             ->getBack()
-        ->setNext(QMenuItem::createCheckable(MENU_SOUND, "Sound", true))
+        ->setNext(QMenuItem::createCheckable(MENU_SOUNDS, "Sound", true))
         ->setNext(QMenuItem::create(MENU_BACK, "Back"));
 }
 

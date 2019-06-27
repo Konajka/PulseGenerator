@@ -312,7 +312,7 @@ void onItemUtilized(QMenuItemUtilizedEvent event) {
         menu.back();
     } else if (event.utilizedItem->isCheckable()) {
         menu.toggleCheckable(event.utilizedItem);
-        if (event.utilizedItem->getId() == MENU_SOUND) {
+        if (event.utilizedItem->getId() == MENU_SOUNDS) {
             settings.useSounds = event.utilizedItem->isChecked(); 
         }
         renderMenu();
@@ -409,7 +409,23 @@ Serial.println("Loading settings");
             *((char *)&settings + index) = EEPROM.read(SETTINGS_EEPROM_ADDRESS + index);
         }
 
-        // TODO Update menu checkables and radios from loaded settings
+        // Frequency units
+        if (settings.freqUnits == FREQ_UNITS_RPM) {
+            menu.switchRadio(menu.find(MENU_FREQ_UNITS_RPM, true));
+        } else {
+            menu.switchRadio(menu.find(MENU_FREQ_UNITS_RPM, true));
+        }
+
+        // Acceleration curve
+        if (settings.accelerationCurve == ACCELERATION_SHAPE_LINEAR) {
+            menu.switchRadio(menu.find(MENU_CURVE_SHAPE_LINEAR, true));
+        } else {
+            menu.switchRadio(menu.find(MENU_CURVE_SHAPE_QUADRATIC, true));
+        }
+
+        // Sounds
+        menu.setCheckable(menu.find(MENU_SOUNDS, true), settings.useSounds);
+
         Serial.println("Settings loaded");
     } else {
         Serial.println("Header not found");

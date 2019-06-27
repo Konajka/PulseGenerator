@@ -626,18 +626,66 @@ class QMenu {
         }
 
         /**
+         * @brief Finds first item in whole menu identified by given id.
+         * @param id Target item id. Note - id must not be unique.
+         * @param inTree Set to true to find item in submenu or false to search only on current menu
+         * level.
+         * @return Returns pointer to first item found with given id or NULL if no item found.
+         */
+        QMenuItem* find(int id, bool inTree) {
+            return find(getRoot(), id, inTree);
+        }
+
+        /**
+         * @brief Finds first item in whole menu identified by given id.
+         * @param root Root item where the searching starts from.
+         * @param id Target item id. Note - id must not be unique.
+         * @param inTree Set to true to find item in submenu or false to search only on current menu
+         * level.
+         * @return Returns pointer to first item found with given id or NULL if no item found.
+         */
+        QMenuItem* find(const QMenuItem* root, int id, bool inTree) {
+            QMenuItem* item = root;
+            while (item != NULL) {
+                // Check this item is target
+                if (item->getId() == id) {
+                    return item;
+                // Try find it in submenu
+                } else if (inTree && item->getMenu() != NULL) {
+                    QMenuItem* result = find(item->getMenu(), id, inTree);
+                    if (result != NULL) {
+                        return result;
+                    }
+                }
+                item = item->getNext();
+            }
+
+            return NULL;
+        }
+
+        /**
+         * @brief Sets item's checked state if item is checkable.
+         * @param item Item which state has to be set. Item has to be checkable.
+         * @return Returns pointer to item that has been checked or unchecked or NULL this item is
+         * not checkable.
+         */
+        QMenuItem* setCheckable(QMenuItem* item, bool checked) {
+            if (item != NULL && item->isCheckable()) {
+                item->setChecked(checked);
+                return item;
+            }
+
+            return NULL;
+        }
+
+        /**
          * @brief Toggles item's checked state if item is checkable.
          * @param item Item to be toggled. Item has to be checkable.
          * @return Returns pointer to item that has been checked or unchecked or NULL this item is
          * not checkable.
          */
         QMenuItem* toggleCheckable(QMenuItem* item) {
-            if (item->isCheckable()) {
-                item->setChecked(!item->isChecked());
-                return item;
-            }
-
-            return NULL;
+            return item != NULL ? setCheckable(item, !item->isChecked()) : NULL;
         }
 
         /**
@@ -648,7 +696,7 @@ class QMenu {
          */
         QMenuItem* switchRadio(QMenuItem* switchItem) {
             // If given item is not radio item, invalid call
-            if (!switchItem->isRadio()) {
+            if (switchItem == NULL || !switchItem->isRadio()) {
                 return NULL;
             }
 
