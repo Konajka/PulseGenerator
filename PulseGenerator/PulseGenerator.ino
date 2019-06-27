@@ -31,6 +31,9 @@
  *      Added menu icons drawing.
  *      Fixed menu constant names.
  *      Settings loading and saving
+ * @version 0.6 2019-06-27
+ *      Added valueable setting items measuring
+ *      Added frequency showing
  */
 
 #include <Arduino.h>
@@ -68,10 +71,16 @@ QMenuListRenderer menuRenderer(&menu, MENU_SIZE);
 #define SETTINGS_HEADER_SIZE 5
 #define SETTINGS_HEADER_VERSION "SV01"
 #define SETTINGS_EEPROM_ADDRESS 0
+#define SETTINGS_MIN_FREQ_MIN 8
+#define SETTINGS_MIN_FREQ_MAX 20
+#define SETTINGS_MIN_FREQ_STEP 1
+#define SETTINGS_MAX_FREQ_MIN 180
+#define SETTINGS_MAX_FREQ_MAX 240
+#define SETTINGS_MAX_FREQ_STEP 10
 struct Settings {
     char header[5];
     word minFreq;
-    word maxFreg;
+    word maxFreq;
     byte pulseWidth;
     byte accelerationCurve;
     byte freqFloating;
@@ -143,8 +152,8 @@ void renderSplash() {
     char* logo = "Pulse generator";
     u8g_uint_t textWidth = oled.getStrWidth(logo);
     u8g_uint_t fontHeight = oled.getFontAscent() - oled.getFontDescent();
-    u8g_uint_t left = (oled.getWidth() - textWidth) / 2;
-    u8g_uint_t top = (oled.getHeight() - fontHeight) / 2;
+    u8g_uint_t left = u8gCenter(oled.getWidth(), textWidth);
+    u8g_uint_t top = u8gCenter(oled.getHeight(), fontHeight);
     oled.firstPage();
     do {
         oled.drawStr(left, top, logo);
@@ -166,34 +175,71 @@ void loop() {
 
 /* Render main screen */
 void renderGenerator() {
+    // Current frequency
+    char freq[16] = "";
+    sprintf(freq, "%d", getFreqByUnits(frequency));
+
+    // Current frequency units
+    char units[16] = "";
+    getFreqUnits(units);
+
+    // Calculate frequency text dimensions
+    oled.setFont(u8g_font_fur30n);
+    oled.setFontRefHeightText();
+    u8g_uint_t maxValueWidth = oled.getStrWidth("00000");
+    u8g_uint_t valueWidth = oled.getStrWidth(freq);
+    u8g_uint_t valueHeight = oled.getFontAscent() - oled.getFontDescent();
+    u8g_uint_t valueRight = u8gCenter(oled.getWidth(), maxValueWidth) + maxValueWidth;
+    u8g_uint_t valueLeft = valueRight - valueWidth;
+    u8g_uint_t valueTop = u8gCenter(oled.getHeight(), valueHeight);
+
+    // Calculate units dimensions
+    u8g_uint_t unitsLeft = valueRight - oled.getStrWidth(units);
+    u8g_uint_t unitsTop = valueTop + valueHeight + GL_BASE_PADDING;
+
+    // Render
     oled.firstPage();
     do {
         // Current frequency
-        char freq[16];
-        sprintf(freq, "%d", frequency);
-
         oled.setDefaultForegroundColor();
         oled.setFont(u8g_font_fur30n);
         oled.setFontRefHeightText();
         oled.setFontPosTop();
-        oled.drawStr(0, 0, freq);
+        oled.drawStr(valueLeft, valueTop, freq);
 
         // Bottom line info
         oled.setFont(u8g_font_6x13);
-        oled.setFontPosBottom();
-        oled.drawStr(0, 60, settings.freqUnits == FREQ_UNITS_RPM ? "rpm" : "Hz");
+        oled.setFontPosTop();
+        oled.drawStr(unitsLeft, unitsTop, units);
     } while (oled.nextPage());
 }
 
 /* Render setup item value measuring */
 void renderMeasure() {
-    // TODO Use static strings
-    char* value = NULL;
-    char* units = NULL;
+    char value[16] = "";
+    char units[16] = "";
 
+    // Get value for measured item
     switch (selected->getId()) {
+        case MENU_MIN_FREQ:
+            sprintf(value, "%d", getFreqByUnits(settings.minFreq));
+            getFreqUnits(units);
+            break;
+        case MENU_MAX_FREQ:
+            sprintf(value, "%d", getFreqByUnits(settings.maxFreq));
+            getFreqUnits(units);
+            break;
         case MENU_PULSE_WIDTH:
-            value = settings.pulseWidth;
+            sprintf(value, "%d", settings.pulseWidth);
+            strcpy(units, "ms");
+            break;
+        case MENU_FREQ_FLOATING:
+            if (settings.freqFloating == 0) {
+                strcpy(value, "Off");
+            } else {
+                sprintf(value, "%d", settings.freqFloating);
+                strcpy(units, "%");
+            }
             break;
     }
 
@@ -208,14 +254,14 @@ void renderMeasure() {
         oled.drawStr(GL_BASE_PADDING, GL_BASE_PADDING, selected->getCaption());
 
         // Measured item units
-        if (units != NULL) {
+        if (strlen(units) > 0) {
             oled.setFont(u8g_font_6x13);
             oled.setFontPosBottom();
             oled.drawStr(GL_BASE_PADDING, oled.getHeight() - GL_BASE_PADDING, units);
         }
 
         // Measured value
-        if (value != NULL) {
+        if (strlen(value) > 0) {
             oled.setFont(u8g_font_fur30n);
             oled.setFontPosTop();
             oled.drawStr(GL_BASE_PADDING, oled.getHeight() - GL_BASE_PADDING, value);
@@ -236,19 +282,25 @@ void renderMenu() {
 /* Encoder rotation event */
 void encoderOnChange(RotaryEncoderOnChangeEvent event) {
     if (measureSettingsValue) {
+        // Get direction: right = increase, left = decrease
+        bool up = event.direction == right;
+
         // Measure setup value by selected item
         switch (selected->getId()) {
             case MENU_MIN_FREQ:
-                // TODO change value and request render
+                settings.minFreq = step(up, settings.minFreq, SETTINGS_MIN_FREQ_STEP,
+                        up ? SETTINGS_MIN_FREQ_MAX : SETTINGS_MIN_FREQ_MIN);
                 break;
 
             case MENU_MAX_FREQ:
-                // TODO change value and request render
+                settings.maxFreq = step(up, settings.maxFreq, SETTINGS_MAX_FREQ_STEP,
+                        up ? SETTINGS_MAX_FREQ_MAX : SETTINGS_MAX_FREQ_MIN);
                 break;
 
             case MENU_PULSE_WIDTH:
                 // TODO change value and request render
                 break;
+
             case MENU_FREQ_FLOATING:
                 // TODO change value and request render
                 break;
@@ -264,11 +316,19 @@ void encoderOnChange(RotaryEncoderOnChangeEvent event) {
     }
 }
 
+/* Change value by step in given direction */
+word step(bool up, word value, word step, word limit) {
+    if (up) {
+        return value + step <= limit ? value + step : limit;
+    } else {
+        return value - step >= limit ? value - step : limit;
+    }
+}
+
 /* Encoder click event */
 void encoderOnClick() {
     if (measureSettingsValue) {
         // Update measured value and escape measuring
-        // TODO Save measure item
         measureSettingsValue = false;
         renderMenu();
     } else {
@@ -390,9 +450,25 @@ void onRenderMenuItem(QMenuRenderItemEvent event) {
     }
 }
 
+/* Gets current units name */
+void getFreqUnits(char* buffer) {
+    switch (settings.freqUnits) {
+        case FREQ_UNITS_RPM:
+            strcpy(buffer, "rpm");
+            break;
+        case FREQ_UNITS_HZ:
+            strcpy(buffer, "Hz");
+    }
+}
+
+/* Center object to range */
+u8g_uint_t u8gCenter(u8g_uint_t range, u8g_uint_t size) {
+    return (range - size) / 2;
+}
+
 /* Loads settings from EEPROM if stored */
 void loadSettings() {
-Serial.println("Loading settings");
+    Serial.println("Loading settings");
     
     // Find settings header in EEPROM
     bool headerFound = true;
@@ -446,4 +522,9 @@ word readFrequnecyValue() {
     // TODO read A/D value
     // TODO apply curve shape
     // TODO map value between min and max
+    return settings.minFreq;
+}
+
+word getFreqByUnits(word freq) {
+    return settings.freqUnits == FREQ_UNITS_RPM ? freq * 60 : freq;
 }
