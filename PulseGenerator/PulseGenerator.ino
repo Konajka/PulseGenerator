@@ -46,6 +46,18 @@
 /* Enable serial link */
 #define SERIAL_LOG
 
+/* Freauency controlling potentiometer */
+#define FREQ_PIN A0
+#define FREQ_INPUT_MIN 0
+#define FREQ_INPUT_MAX 1023
+#define FREQ_AD_REFRESH_PERIOD 50
+long adLastRefresh;
+
+//#define BUZZER_PRESENT
+#ifdef BUZZER_PRESENT
+#define BUZZER_PIN 7
+#endif
+
 /* Rotary encoder controller */
 #define ENCODER_CLK 5
 #define ENCODER_DT 4
@@ -136,10 +148,16 @@ void setup() {
     // Read frequency from A/D
     frequency = readFrequnecyValue();
 
+    #ifdef BUZZER_PRESENT
+    pinMode(BUZZER_PIN, OUTPUT);
+    noTone(BUZZER_PIN);
+    #endif
+
     // Render menu
     oledLastRefresh = millis();
+    adLastRefresh = millis();
     renderSplash();
-    delay(1000);
+    delay(2000);
 }
 
 /* Render splash screen */
@@ -164,12 +182,24 @@ void renderSplash() {
 void loop() {
     encoder.update();
 
-    // Render generator screen if actaual
+    // Generator update
     if (selected->getId() == MENU_GENERATOR) {
+
+        // Read frequency from A/D if the time comes
+        if (adLastRefresh + FREQ_AD_REFRESH_PERIOD < millis()) {
+            frequency = readFrequnecyValue();
+            adLastRefresh = millis();
+        }
+
+        // Render displat values in the time comes
         if (oledLastRefresh + OLED_REFRESH_PERIOD < millis()) {
             renderGenerator();
             oledLastRefresh = millis();
         }
+
+        #ifdef BUZZER_PRESENT
+        tone(BUZZER_PIN, 480);
+        #endif
     }
 }
 
@@ -194,6 +224,7 @@ void renderGenerator() {
     u8g_uint_t valueTop = u8gCenter(oled.getHeight(), valueHeight);
 
     // Calculate units dimensions
+    oled.setFont(u8g_font_6x13);
     u8g_uint_t unitsLeft = valueRight - oled.getStrWidth(units);
     u8g_uint_t unitsTop = valueTop + valueHeight + GL_BASE_PADDING;
 
@@ -263,8 +294,10 @@ void renderMeasure() {
         // Measured value
         if (strlen(value) > 0) {
             oled.setFont(u8g_font_fur30n);
+            oled.setFontRefHeightText();
             oled.setFontPosTop();
-            oled.drawStr(GL_BASE_PADDING, oled.getHeight() - GL_BASE_PADDING, value);
+            u8g_uint_t valueHeight = oled.getFontAscent() - oled.getFontDescent();
+            oled.drawStr(GL_BASE_PADDING, u8gCenter(oled.getHeight(), valueHeight), value);
         }
 
     } while (oled.nextPage());
@@ -485,44 +518,55 @@ void loadSettings() {
             *((char *)&settings + index) = EEPROM.read(SETTINGS_EEPROM_ADDRESS + index);
         }
 
-        // Frequency units
-        if (settings.freqUnits == FREQ_UNITS_RPM) {
-            menu.switchRadio(menu.find(MENU_FREQ_UNITS_RPM, true));
-        } else {
-            menu.switchRadio(menu.find(MENU_FREQ_UNITS_RPM, true));
-        }
-
-        // Acceleration curve
-        if (settings.accelerationCurve == ACCELERATION_SHAPE_LINEAR) {
-            menu.switchRadio(menu.find(MENU_CURVE_SHAPE_LINEAR, true));
-        } else {
-            menu.switchRadio(menu.find(MENU_CURVE_SHAPE_QUADRATIC, true));
-        }
-
-        // Sounds
-        menu.setCheckable(menu.find(MENU_SOUNDS, true), settings.useSounds);
-
+        // TODO Update menu checkables and radios from loaded settings
         Serial.println("Settings loaded");
+        printSettings();
     } else {
         Serial.println("Header not found");
+        printSettings();
     }
 }
 
 /* Stores settings into EEPROM */
 void saveSettings() {
     Serial.println("Saving settings");
+    printSettings();
     
     for (unsigned int index = 0; index < sizeof(settings); index++) {
         EEPROM.update(SETTINGS_EEPROM_ADDRESS + index, *((char *)&settings + index));
     }
 }
 
+void printSettings() {
+    p("header", settings.header);
+    p("nimFreq", settings.minFreq);
+    p("maxFreq", settings.maxFreq);
+    p("pulseWidth", settings.pulseWidth);
+    p("accelCurve", settings.accelerationCurve);
+    p("freqFloating", settings.freqFloating);
+    p("freqUnits", settings.freqUnits);
+    p("useSounds", settings.useSounds ? "true" : "false");
+
+}
+
+void p(char* name, const char* value) {
+    Serial.print(name);
+    Serial.print(" = ");
+    Serial.print(value);
+    Serial.println();
+}
+
+void p(char* name, word value) {
+    Serial.print(name);
+    Serial.print(value);
+    Serial.println();
+}
+
 /* Calucates frequency from min and max value and A/D current value */
 word readFrequnecyValue() {
-    // TODO read A/D value
+    int value = analogRead(FREQ_PIN);
     // TODO apply curve shape
-    // TODO map value between min and max
-    return settings.minFreq;
+    return map(value, FREQ_INPUT_MIN, FREQ_INPUT_MAX, settings.minFreq, settings.maxFreq);
 }
 
 word getFreqByUnits(word freq) {
