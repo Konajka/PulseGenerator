@@ -30,10 +30,13 @@
  *      Fixed menu controlling.
  *      Added menu icons drawing.
  *      Fixed menu constant names.
- *      Settings loading and saving
+ *      Settings loading and saving.
  * @version 0.6 2019-06-27
- *      Added valueable setting items measuring
- *      Added frequency showing
+ *      Added valueable setting items measuring.
+ *      Added frequency showing.
+ * @version 0.7 2019-07-01
+ *      Added settings propagation to menu.
+ *      Source code reorganized to Env.h.
  */
 
 #include <Arduino.h>
@@ -79,26 +82,7 @@ QMenuListRenderer menuRenderer(&menu, MENU_SIZE);
 /* Display render period in ms */
 #define OLED_REFRESH_PERIOD 200
 
-/* Application settings */
-#define SETTINGS_HEADER_SIZE 5
-#define SETTINGS_HEADER_VERSION "SV01"
-#define SETTINGS_EEPROM_ADDRESS 0
-#define SETTINGS_MIN_FREQ_MIN 8
-#define SETTINGS_MIN_FREQ_MAX 20
-#define SETTINGS_MIN_FREQ_STEP 1
-#define SETTINGS_MAX_FREQ_MIN 180
-#define SETTINGS_MAX_FREQ_MAX 240
-#define SETTINGS_MAX_FREQ_STEP 10
-struct Settings {
-    char header[5];
-    word minFreq;
-    word maxFreq;
-    byte pulseWidth;
-    byte accelerationCurve;
-    byte freqFloating;
-    byte freqUnits;
-    bool useSounds;
-} settings = {
+Settings settings = {
     SETTINGS_HEADER_VERSION, // Settings header in EEPROM
     10, // 10Hz ~ 600rpm
     200, // 200Hz ~ 12000 rpm
@@ -144,6 +128,7 @@ void setup() {
 
     // Load settings
     loadSettings();
+    propagateSettingsToMenu(settings, menu);
 
     // Read frequency from A/D
     frequency = readFrequnecyValue();
@@ -207,11 +192,11 @@ void loop() {
 void renderGenerator() {
     // Current frequency
     char freq[16] = "";
-    sprintf(freq, "%d", getFreqByUnits(frequency));
+    sprintf(freq, "%d", getFreqByUnits(settings, frequency));
 
     // Current frequency units
     char units[16] = "";
-    getFreqUnits(units);
+    getFreqUnits(settings, units);
 
     // Calculate frequency text dimensions
     oled.setFont(u8g_font_fur30n);
@@ -253,12 +238,12 @@ void renderMeasure() {
     // Get value for measured item
     switch (selected->getId()) {
         case MENU_MIN_FREQ:
-            sprintf(value, "%d", getFreqByUnits(settings.minFreq));
-            getFreqUnits(units);
+            sprintf(value, "%d", getFreqByUnits(settings, settings.minFreq));
+            getFreqUnits(settings, units);
             break;
         case MENU_MAX_FREQ:
-            sprintf(value, "%d", getFreqByUnits(settings.maxFreq));
-            getFreqUnits(units);
+            sprintf(value, "%d", getFreqByUnits(settings, settings.maxFreq));
+            getFreqUnits(settings, units);
             break;
         case MENU_PULSE_WIDTH:
             sprintf(value, "%d", settings.pulseWidth);
@@ -416,7 +401,7 @@ void onItemUtilized(QMenuItemUtilizedEvent event) {
                 settings.accelerationCurve = ACCELERATION_SHAPE_LINEAR;
                 break;
             case MENU_CURVE_SHAPE_QUADRATIC:
-                settings.accelerationCurve = ACCELERATION_SHAPE_LINEAR;
+                settings.accelerationCurve = ACCELERATION_SHAPE_QUADRATIC;
                 break;
             case MENU_FREQ_UNITS_RPM:
                 settings.freqUnits = FREQ_UNITS_RPM;
@@ -483,17 +468,6 @@ void onRenderMenuItem(QMenuRenderItemEvent event) {
     }
 }
 
-/* Gets current units name */
-void getFreqUnits(char* buffer) {
-    switch (settings.freqUnits) {
-        case FREQ_UNITS_RPM:
-            strcpy(buffer, "rpm");
-            break;
-        case FREQ_UNITS_HZ:
-            strcpy(buffer, "Hz");
-    }
-}
-
 /* Center object to range */
 u8g_uint_t u8gCenter(u8g_uint_t range, u8g_uint_t size) {
     return (range - size) / 2;
@@ -501,8 +475,8 @@ u8g_uint_t u8gCenter(u8g_uint_t range, u8g_uint_t size) {
 
 /* Loads settings from EEPROM if stored */
 void loadSettings() {
-    Serial.println("Loading settings");
-    
+
+    // TODO Move it to library
     // Find settings header in EEPROM
     bool headerFound = true;
     for (unsigned int index = 0; index < SETTINGS_HEADER_SIZE; index++) {
@@ -517,49 +491,14 @@ void loadSettings() {
         for (unsigned int index = 0; index < sizeof(settings); index++) {
             *((char *)&settings + index) = EEPROM.read(SETTINGS_EEPROM_ADDRESS + index);
         }
-
-        // TODO Update menu checkables and radios from loaded settings
-        Serial.println("Settings loaded");
-        printSettings();
-    } else {
-        Serial.println("Header not found");
-        printSettings();
-    }
+    } 
 }
 
 /* Stores settings into EEPROM */
-void saveSettings() {
-    Serial.println("Saving settings");
-    printSettings();
-    
+void saveSettings() { 
     for (unsigned int index = 0; index < sizeof(settings); index++) {
         EEPROM.update(SETTINGS_EEPROM_ADDRESS + index, *((char *)&settings + index));
     }
-}
-
-void printSettings() {
-    p("header", settings.header);
-    p("nimFreq", settings.minFreq);
-    p("maxFreq", settings.maxFreq);
-    p("pulseWidth", settings.pulseWidth);
-    p("accelCurve", settings.accelerationCurve);
-    p("freqFloating", settings.freqFloating);
-    p("freqUnits", settings.freqUnits);
-    p("useSounds", settings.useSounds ? "true" : "false");
-
-}
-
-void p(char* name, const char* value) {
-    Serial.print(name);
-    Serial.print(" = ");
-    Serial.print(value);
-    Serial.println();
-}
-
-void p(char* name, word value) {
-    Serial.print(name);
-    Serial.print(value);
-    Serial.println();
 }
 
 /* Calucates frequency from min and max value and A/D current value */
@@ -567,8 +506,4 @@ word readFrequnecyValue() {
     int value = analogRead(FREQ_PIN);
     // TODO apply curve shape
     return map(value, FREQ_INPUT_MIN, FREQ_INPUT_MAX, settings.minFreq, settings.maxFreq);
-}
-
-word getFreqByUnits(word freq) {
-    return settings.freqUnits == FREQ_UNITS_RPM ? freq * 60 : freq;
 }
