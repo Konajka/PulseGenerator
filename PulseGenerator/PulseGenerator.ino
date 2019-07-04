@@ -47,7 +47,7 @@
 #include "lib/Env.h"
 
 /* Enable serial link */
-#define SERIAL_LOG
+// #define SERIAL_LOG
 
 /* Freauency controlling potentiometer */
 #define FREQ_PIN A0
@@ -109,6 +109,7 @@ bool measureSettingsValue = false;
 void setup() {
     #ifdef SERIAL_LOG
     Serial.begin(9600);
+    Serial.println("Serial logging enabled.");
     #endif
 
     //Set menu events and create structure
