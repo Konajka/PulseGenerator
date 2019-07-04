@@ -13,7 +13,7 @@
 #define MENU_FREQ_UNITS_SUBMENU 16
 #define MENU_FREQ_UNITS_RPM 161
 #define MENU_FREQ_UNITS_HZ 162
-#define MENU_SOUNDS 17
+#define MENU_USE_FILTER 17
 #define MENU_BACK 0
 
 #define ACCELERATION_SHAPE_LINEAR 0
@@ -33,13 +33,13 @@ void populateMenu(QMenu& menu) {
             ->setNext(QMenuItem::createRadio(MENU_CURVE_SHAPE_QUADRATIC, "Quadratic curve", MENU_CURVE_SHAPE_SUBMENU, false))
             ->setNext(QMenuItem::create(MENU_BACK, "Back"))
             ->getBack()
-        ->setNext(QMenuItem::create(MENU_FREQ_FLOATING, "Frequency floating"))
+        //->setNext(QMenuItem::create(MENU_FREQ_FLOATING, "Frequency floating"))
         ->setNext(QMenuItem::create(MENU_FREQ_UNITS_SUBMENU, "Frequency units"))
             ->setMenu(QMenuItem::createRadio(MENU_FREQ_UNITS_RPM, "Rotates per minute", MENU_FREQ_UNITS_SUBMENU, true))
             ->setNext(QMenuItem::createRadio(MENU_FREQ_UNITS_HZ, "Hertz", MENU_FREQ_UNITS_SUBMENU, false))
             ->setNext(QMenuItem::create(MENU_BACK, "Back"))
             ->getBack()
-        ->setNext(QMenuItem::createCheckable(MENU_SOUNDS, "Sound", true))
+        ->setNext(QMenuItem::createCheckable(MENU_USE_FILTER, "Use smooth filter", true))
         ->setNext(QMenuItem::create(MENU_BACK, "Back"));
 }
 
@@ -48,11 +48,15 @@ void populateMenu(QMenu& menu) {
 #define SETTINGS_HEADER_VERSION "SV01"
 #define SETTINGS_EEPROM_ADDRESS 0
 #define SETTINGS_MIN_FREQ_MIN 8
-#define SETTINGS_MIN_FREQ_MAX 20
+#define SETTINGS_MIN_FREQ_MAX 40
 #define SETTINGS_MIN_FREQ_STEP 1
-#define SETTINGS_MAX_FREQ_MIN 180
-#define SETTINGS_MAX_FREQ_MAX 240
-#define SETTINGS_MAX_FREQ_STEP 10
+#define SETTINGS_MAX_FREQ_MIN 50
+#define SETTINGS_MAX_FREQ_MAX 140
+#define SETTINGS_MAX_FREQ_STEP 5
+#define SETTINGS_PULSE_WIDTH_MIN 1
+#define SETTINGS_PULSE_WIDTH_MAX 5
+#define SETTINGS_PULSE_WIDTH_STEP 1
+
 typedef struct Settings {
     char header[5];
     word minFreq;
@@ -61,7 +65,7 @@ typedef struct Settings {
     byte accelerationCurve;
     byte freqFloating;
     byte freqUnits;
-    bool useSounds;
+    bool useFilter;
 } ;
 
 /* Returns current frequency level in requested units */
@@ -71,7 +75,7 @@ word getFreqByUnits(Settings settings, word freq) {
 
 /* Propagates settings structure to menu state */
 void propagateSettingsToMenu(Settings settings, QMenu &menu) {
-    menu.find(MENU_SOUNDS, true)->setChecked(settings.useSounds);
+    menu.find(MENU_USE_FILTER, true)->setChecked(settings.useFilter);
     menu.switchRadio(menu.find(settings.accelerationCurve == ACCELERATION_SHAPE_LINEAR
             ? MENU_CURVE_SHAPE_LINEAR : MENU_CURVE_SHAPE_QUADRATIC, true));
     menu.switchRadio(menu.find(settings.freqUnits == FREQ_UNITS_RPM

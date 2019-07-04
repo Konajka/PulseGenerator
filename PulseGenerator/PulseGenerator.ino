@@ -49,6 +49,9 @@
 /* Enable serial link */
 // #define SERIAL_LOG
 
+/* Output pin */
+#define PIN_OUTPUT 13
+
 /* Freauency controlling potentiometer */
 #define FREQ_PIN A0
 #define FREQ_INPUT_MIN 0
@@ -84,9 +87,9 @@ QMenuListRenderer menuRenderer(&menu, MENU_SIZE);
 
 Settings settings = {
     SETTINGS_HEADER_VERSION, // Settings header in EEPROM
-    10, // 10Hz ~ 600rpm
-    200, // 200Hz ~ 12000 rpm
-    5, // 5 ms
+    SETTINGS_MIN_FREQ_MIN,
+    SETTINGS_MAX_FREQ_MAX,
+    SETTINGS_PULSE_WIDTH_MIN,
     ACCELERATION_SHAPE_LINEAR, // default acceleration type
     0, // default frequency floating 0%
     FREQ_UNITS_RPM,
@@ -101,6 +104,8 @@ QMenuItem* selected = NULL;
 
 /* Current working frequency */
 word frequency = settings.minFreq;
+int pulseState = LOW;
+long pulseLastTime;
 
 /* Settings value measuring flag */
 bool measureSettingsValue = false;
@@ -111,6 +116,9 @@ void setup() {
     Serial.begin(9600);
     Serial.println("Serial logging enabled.");
     #endif
+
+    // Set output pin
+    pinMode(PIN_OUTPUT, OUTPUT);
 
     //Set menu events and create structure
     menu.setOnActiveItemChanged(activeItemChanged);
@@ -142,8 +150,11 @@ void setup() {
     // Render menu
     oledLastRefresh = millis();
     adLastRefresh = millis();
+
     renderSplash();
     delay(2000);
+
+    pulseLastTime = millis();
 }
 
 /* Render splash screen */
@@ -186,6 +197,19 @@ void loop() {
         #ifdef BUZZER_PRESENT
         tone(BUZZER_PIN, 480);
         #endif
+
+        // Pulse output
+        long pulseDelta = millis() - pulseLastTime;
+        // Pulse UP
+        if (pulseState == LOW && pulseDelta >= settings.pulseWidth) {
+            pulseState = HIGH;
+            digitalWrite(PIN_OUTPUT, pulseState);
+            pulseLastTime = millis();
+        } else if (pulseState == HIGH && (1 / frequency - settings.pulseWidth) >= pulseDelta) {
+            pulseState = LOW;
+            digitalWrite(PIN_OUTPUT, pulseState);
+            pulseLastTime = millis();
+        }
     }
 }
 
@@ -317,7 +341,8 @@ void encoderOnChange(RotaryEncoderOnChangeEvent event) {
                 break;
 
             case MENU_PULSE_WIDTH:
-                // TODO change value and request render
+                settings.pulseWidth = step(up, settings.pulseWidth, SETTINGS_PULSE_WIDTH_STEP,
+                        up ? SETTINGS_PULSE_WIDTH_MAX : SETTINGS_PULSE_WIDTH_MIN);
                 break;
 
             case MENU_FREQ_FLOATING:
@@ -358,8 +383,6 @@ void encoderOnClick() {
 
 /* Encoder long click event */
 void encoderOnLongClick() {
-    // TODO Long click held one moment longer causes short click in menu
-
     if (measureSettingsValue) {
         // Discard measured value and escape measuring
         measureSettingsValue = false;
@@ -379,7 +402,10 @@ void activeItemChanged(QMenuActiveItemChangedEvent event) {
         //Save settings when leaving menu or draw menu
         if (event.newActiveItem->getId() == MENU_GENERATOR) {
             saveSettings();
+            pulseState = LOW;
+            pulseLastTime = millis();
         } else {
+            digitalWrite(PIN_OUTPUT, LOW);
             renderMenu();
         }
     }
@@ -391,8 +417,8 @@ void onItemUtilized(QMenuItemUtilizedEvent event) {
         menu.back();
     } else if (event.utilizedItem->isCheckable()) {
         menu.toggleCheckable(event.utilizedItem);
-        if (event.utilizedItem->getId() == MENU_SOUNDS) {
-            settings.useSounds = event.utilizedItem->isChecked(); 
+        if (event.utilizedItem->getId() == MENU_USE_FILTER) {
+            settings.useFilter = event.utilizedItem->isChecked(); 
         }
         renderMenu();
     } else if (event.utilizedItem->isRadio()) {
@@ -505,6 +531,10 @@ void saveSettings() {
 /* Calucates frequency from min and max value and A/D current value */
 word readFrequnecyValue() {
     int value = analogRead(FREQ_PIN);
-    // TODO apply curve shape
+    if (settings.accelerationCurve == ACCELERATION_SHAPE_QUADRATIC) {
+        // TODO Fix quad calculation error
+        word quad = value * value;
+        value = map(quad, 0, 1048575, FREQ_INPUT_MIN, FREQ_INPUT_MAX);
+    }
     return map(value, FREQ_INPUT_MIN, FREQ_INPUT_MAX, settings.minFreq, settings.maxFreq);
 }
