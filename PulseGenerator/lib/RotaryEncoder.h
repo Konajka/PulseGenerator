@@ -13,6 +13,11 @@
  *      Added velocity support.
  * @version 0.5 2019-06-21
  *      Removed ROTARY_ENCODER_CLICKS_SUPPORT direcitve.
+ * @version 0.6 2019-07-01
+ *      Fixed blind click firing after long click fired.
+ * @version 0.7 2019-07-04
+ *      Added switch debouncing.
+ *      Updated doc comments.
  */
 
 #ifndef ROTARY_ENCODER_H
@@ -22,6 +27,9 @@
 
 // Long click minimal time
 #define ROTARY_ENCODER_LONG_CLICK_MILLIS 450
+
+//
+#define ROTARY_ENCODER_SWITCH_DEBOUNCE_TIME 30
 
 // Direction definition
 enum RotaryEncoderDirection { left, right };
@@ -45,7 +53,7 @@ typedef void (*RotaryEncoderOnClick) ();
 typedef void (*RotaryEncoderOnLongClick) ();
 
 /**
- * Rotary encoder controller class.
+ * @brief Rotary encoder controller class.
  */
 class RotaryEncoder 
 {
@@ -75,11 +83,42 @@ class RotaryEncoder
         // Long click time measuring
         unsigned long _switchPressTime = 0;
 
+        // Long click event fired flag
+        bool _longClickFired = false;
+
+        // Switch debounce time measure
+        long _lastDebounceSwitchTime;
+
+        // Switch debouncing state
+        int _lastDebounceSwitchState = HIGH;
+
+        /**
+         * @brief Gets switch state after debouncing.
+         * @param state Debounced state is set after debouncing.
+         * @return Returns true if switch click is debounced and final state stored into
+         * state or false if not debounced yet.
+         */
+        bool getDebouncedSwitchState(int &state) {
+            int debounceSwitchState = digitalRead(_PIN_SWITCH);
+
+            if (debounceSwitchState != _lastDebounceSwitchState) {
+                _lastDebounceSwitchTime = millis();
+            }
+            _lastDebounceSwitchState = debounceSwitchState;
+
+            long switchDebounceTime = millis() - _lastDebounceSwitchTime;
+            if (switchDebounceTime > ROTARY_ENCODER_SWITCH_DEBOUNCE_TIME) {
+                state = debounceSwitchState;
+                return true;
+            } else {
+                return false;
+            }
+        }
+
     protected:
     
         /**
-         * Calls onChange event if assigned.
-         * 
+         * @brief Calls onChange event if assigned.
          * @param direction Rotation direction info.
          * @param velocity Time spend from last event in millis.
          */ 
@@ -94,8 +133,7 @@ class RotaryEncoder
         }
 
         /**
-         * Calls onSwitch event if assigned.
-         * 
+         * @brief Calls onSwitch event if assigned.
          * @param action Encoder switch info.
          */ 
         void doOnSwitch(RotaryEncoderSwitchAction action) {
@@ -108,7 +146,7 @@ class RotaryEncoder
         }
         
         /**
-         * Calls onClick event if assigned.
+         * @brief Calls onClick event if assigned.
          */ 
         void doOnClick() {
             if (_onClick != NULL) {
@@ -117,7 +155,7 @@ class RotaryEncoder
         }    
         
         /**
-         * Calls onLongClick event if assigned.
+         * @brief Calls onLongClick event if assigned.
          */ 
         void doOnLongClick() {
             if (_onLongClick != NULL) {
@@ -128,7 +166,7 @@ class RotaryEncoder
     public:
     
         /**
-         * Controller constructor, assigns encoder pins. 
+         * @brief Controller constructor, assigns encoder pins.
          */
         RotaryEncoder(uint8_t PIN_CLOCK, uint8_t PIN_DATA, uint8_t PIN_SWITCH) {
             _PIN_CLOCK = PIN_CLOCK;
@@ -137,8 +175,7 @@ class RotaryEncoder
         }
 
         /**
-         * Gets onChange callback.
-         * 
+         * @brief Gets onChange callback.
          * @return Returns assigned callback.
          */
         RotaryEncoderOnChange getOnChange()  {
@@ -146,8 +183,7 @@ class RotaryEncoder
         }
 
         /**
-         * Assigns onChange event callback.
-         * 
+         * @brief Assigns onChange event callback.
          * @param onChange callback to assign.
          */
         void setOnChange(RotaryEncoderOnChange onChange)  {
@@ -155,8 +191,7 @@ class RotaryEncoder
         }
 
         /**
-         * Gets onSwitch callback.
-         * 
+         * @brief Gets onSwitch callback.
          * @return Returns assigned callback.
          */
         RotaryEncoderOnSwitch getOnSwitch() {
@@ -164,8 +199,7 @@ class RotaryEncoder
         }
 
         /**
-         * Assigns onSwitch event callback.
-         * 
+         * @brief Assigns onSwitch event callback.
          * @param onSwitch callback to assign.
          */
         void setOnSwitch(RotaryEncoderOnSwitch onSwitch) {
@@ -173,8 +207,7 @@ class RotaryEncoder
         }
         
         /**
-         * Gets onClick callback.
-         * 
+         * @brief Gets onClick callback.
          * @return Returns assigned callback.
          */
         RotaryEncoderOnClick getOnClick() {
@@ -182,8 +215,7 @@ class RotaryEncoder
         }
 
         /**
-         * Assigns onClick event callback.
-         * 
+         * @brief Assigns onClick event callback.
          * @param onClick callback to assign.
          */
         void setOnClick(RotaryEncoderOnClick onClick) {
@@ -191,8 +223,7 @@ class RotaryEncoder
         } 
         
         /**
-         * Gets onLongClick callback.
-         * 
+         * @brief Gets onLongClick callback.
          * @return Returns assigned callback.
          */
         RotaryEncoderOnClick getOnLongClick() {
@@ -200,8 +231,7 @@ class RotaryEncoder
         }
 
         /**
-         * Assigns onLongClick event callback.
-         * 
+         * @brief Assigns onLongClick event callback.
          * @param onLongClick callback to assign.
          */
         void setOnLongClick(RotaryEncoderOnLongClick onLongClick) {
@@ -209,7 +239,7 @@ class RotaryEncoder
         }    
 
         /**
-         * Initializes controller. Call this once before encoder use.
+         * @brief Initializes controller. Call this once before encoder use.
          */
         void begin() {
             initialized = true;
@@ -234,9 +264,8 @@ class RotaryEncoder
         }
 
         /**
-         * Updates encoder state and calls callbacks if any assigned. Call this
+         * @brief Updates encoder state and calls callbacks if any assigned. Call this
          * repeatly in `loop()` method.
-         * 
          * Note: Call `begin()` before this call or nothing s happens.
          */
         void update() {
@@ -262,26 +291,31 @@ class RotaryEncoder
             }
             
             // Detect long click
-            if (_switchPressTime > 0) {
-                if ((millis() - _switchPressTime) > ROTARY_ENCODER_LONG_CLICK_MILLIS) {
-                    _switchPressTime = 0;
+            if (_switchPressTime > 0 && !_longClickFired) {
+                long delta = millis() - _switchPressTime;
+                if (delta > ROTARY_ENCODER_LONG_CLICK_MILLIS) {
+                    _longClickFired = true;
                     doOnLongClick();
                 }                
             }
 
             // Detect switch press or release
-            int pinSw = digitalRead(_PIN_SWITCH);
-            if (_pinSwitchRetain != pinSw) {
-                _pinSwitchRetain = pinSw;
-                if (pinSw == HIGH) {                    
-                    doOnSwitch(release);                    
-                    if (_switchPressTime > 0) {
+            int pinSw;
+            if (getDebouncedSwitchState(pinSw)) {
+                if (_pinSwitchRetain != pinSw) {
+                    _pinSwitchRetain = pinSw;
+                    if (pinSw == HIGH) {
+                        if (!_longClickFired) {
+                            doOnClick();
+                        }
                         _switchPressTime = 0;
-                        doOnClick();
-                    }                     
-                } else {
-                    _switchPressTime = millis();
-                    doOnSwitch(press);
+                        _longClickFired = false;
+                        doOnSwitch(release);
+                    } else {
+                        _switchPressTime = millis();
+                        _longClickFired = false;
+                        doOnSwitch(press);
+                    }
                 }
             }
         }
