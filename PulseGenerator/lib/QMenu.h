@@ -24,6 +24,8 @@
  *  Added checkable and radio item support.
  * @version 0.10 2019-06-26
  *  Added checked flag to item instantiation.
+ * @version 1.0 2019-07-04
+ *  Stable version.
  */
 
 #ifndef QMENU_H

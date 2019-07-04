@@ -15,9 +15,11 @@
  *      Removed ROTARY_ENCODER_CLICKS_SUPPORT direcitve.
  * @version 0.6 2019-07-01
  *      Fixed blind click firing after long click fired.
- * @version 0.7 2019-07-04
+ * @version 0.7 2019-07-03
  *      Added switch debouncing.
  *      Updated doc comments.
+ * @version 1.0 2019-07-04
+ *      Stable version
  */
 
 #ifndef ROTARY_ENCODER_H
